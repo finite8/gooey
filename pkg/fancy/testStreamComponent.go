@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"sync"
 
-	"example.com/goboganui/pkg/register"
 	"github.com/gorilla/websocket"
+	"github.com/ntaylor-barnett/gooey/pkg/register"
 	"github.com/sirupsen/logrus"
 )
 

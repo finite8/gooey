@@ -3,7 +3,7 @@ package fancy
 import (
 	"io"
 
-	"example.com/goboganui/pkg/register"
+	"github.com/ntaylor-barnett/gooey/pkg/register"
 )
 
 // the ContainerComponent is simply a container that can contain other containers. It provides very simple layout capabilities.

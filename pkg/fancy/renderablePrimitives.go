@@ -5,7 +5,7 @@ import (
 	"html/template"
 	"io"
 
-	"example.com/goboganui/pkg/register"
+	"github.com/ntaylor-barnett/gooey/pkg/register"
 )
 
 type TextRenderer struct {

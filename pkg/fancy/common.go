@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"example.com/goboganui/pkg/register"
+	"github.com/ntaylor-barnett/gooey/pkg/register"
 )
 
 // the component is the most basic element that allows itself to be rendered.

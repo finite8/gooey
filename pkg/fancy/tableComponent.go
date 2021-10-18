@@ -6,7 +6,7 @@ import (
 	"io"
 	"reflect"
 
-	"example.com/goboganui/pkg/register"
+	"github.com/ntaylor-barnett/gooey/pkg/register"
 )
 
 type TableComponent struct {

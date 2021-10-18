@@ -4,8 +4,8 @@ package main
 import (
 	"net/http"
 
-	_ "example.com/goboganui/pages/packages"
-	"example.com/goboganui/pkg/register"
+	_ "github.com/ntaylor-barnett/gooey/pages/packages"
+	"github.com/ntaylor-barnett/gooey/pkg/register"
 	"github.com/sirupsen/logrus"
 )
 

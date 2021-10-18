@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"example.com/goboganui/pkg/fancy"
-	"example.com/goboganui/pkg/register"
+	"github.com/ntaylor-barnett/gooey/pkg/fancy"
+	"github.com/ntaylor-barnett/gooey/pkg/register"
 )
 
 func init() {

@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"example.com/goboganui/pkg/register"
+	"github.com/ntaylor-barnett/gooey/pkg/register"
 )
 
 // the component container is a simple page that can display components. Each component supports the ability to render itself in the space.
