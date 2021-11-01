@@ -1,4 +1,4 @@
-package fancy
+package core
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
-	"github.com/ntaylor-barnett/gooey/pkg/register"
+	"github.com/ntaylor-barnett/gooey/register"
 	"github.com/sirupsen/logrus"
 )
 

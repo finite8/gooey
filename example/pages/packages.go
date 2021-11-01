@@ -1,12 +1,12 @@
-package packages
+package pages
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	"github.com/ntaylor-barnett/gooey/pkg/fancy"
-	"github.com/ntaylor-barnett/gooey/pkg/register"
+	"github.com/ntaylor-barnett/gooey/core"
+	"github.com/ntaylor-barnett/gooey/register"
 )
 
 func init() {
@@ -14,13 +14,13 @@ func init() {
 }
 
 type listPackages struct {
-	fancy.ContainerPage
+	core.ContainerPage
 	counter int
 }
 
 func NewListPackages() *listPackages {
 	lp := &listPackages{}
-	lp.WithName("List Packages").WithComponent(fancy.NewTableComponent(func(pc register.PageContext) (interface{}, error) {
+	lp.WithName("List Packages").WithComponent(core.NewTableComponent(func(pc register.PageContext) (interface{}, error) {
 		lp.counter++
 		return []ContactDetails{
 			{Email: "test.com",
@@ -30,7 +30,7 @@ func NewListPackages() *listPackages {
 				Subject: "gfdgfdgfd",
 				Message: "gfdgdfgdfgdfgfdgfdgfdfgd"},
 		}, nil
-	})).WithComponent(fancy.NewStreamComponent(func(c1 context.Context, c2 chan<- string) error {
+	})).WithComponent(core.NewStreamComponent(func(c1 context.Context, c2 chan<- string) error {
 		var counter = 0
 		for {
 			select {

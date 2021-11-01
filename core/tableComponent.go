@@ -1,4 +1,4 @@
-package fancy
+package core
 
 import (
 	"fmt"
@@ -6,18 +6,18 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/ntaylor-barnett/gooey/pkg/register"
+	"github.com/ntaylor-barnett/gooey/register"
 )
 
 type TableComponent struct {
 	dataGetter func(register.PageContext) (interface{}, error)
 }
 
-var tableTemplate = template.Must(template.New("Table").Parse(`
-<table>
+var tableTemplate = template.Must(template.New("List").Parse(`
+<ul>
 <th>
 </th>
-</table>`))
+</ul>`))
 
 // simple table data structure
 type TableData struct {

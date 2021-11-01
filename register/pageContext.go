@@ -15,6 +15,7 @@ type PageContext interface {
 	// Context data refers to any additional parameters or modifiers that have changed how the page has been called (i.e: query string in URL)
 	GetContextData() map[string][]string
 	UnmarshallData(interface{})
+	ResolveUrl(i interface{}) (*url.URL, error)
 }
 
 var _ PageContext = (*pageContext)(nil)
@@ -68,4 +69,20 @@ func getSchemeFromProto(proto string) string {
 		return "http"
 	}
 	return "http"
+}
+
+func (pctx *pageContext) ResolveUrl(i interface{}) (*url.URL, error) {
+	if p, ok := i.(Page); ok {
+		return pctx.GetPageUrl(p), nil
+	}
+	// so, it wasn't the obvious, so lets see what else we have
+	switch v := i.(type) {
+	case string:
+		// in this case, we assume the path is relative
+		return pctx.request.URL.Parse(v)
+	case *url.URL:
+		return pctx.request.URL.ResolveReference(v), nil
+	default:
+		return nil, fmt.Errorf("cannot use %t to resolve a url", i)
+	}
 }

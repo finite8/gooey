@@ -17,13 +17,19 @@ func init() {
 		queued:       map[string]*registeredPageInfo{},
 		pageRegister: map[Page]*registeredPageInfo{},
 	}
+	logger = logrus.New()
+
 }
 
 const (
-	RootPageId = "root"
+	RootPageId   = "root"
+	SigninPageId = "signin"
 )
 
-var globalregister *webregister
+var (
+	globalregister *webregister
+	logger         *logrus.Logger
+)
 
 type webregister struct {
 	root         *registeredPageInfo
@@ -31,6 +37,7 @@ type webregister struct {
 	queued       map[string]*registeredPageInfo
 	pageRegister map[Page]*registeredPageInfo
 	mux          sync.Mutex
+	layout       PageLayout
 }
 
 func (wr *webregister) FindPage(page Page) *registeredPageInfo {
@@ -50,12 +57,21 @@ type registeredPageInfo struct {
 	private  bool // if private, the register will not report this page as part of any kind of menu or lookup request
 }
 
-// Compile the pages into the required hierachy
-func Compile() error {
-
+func precompileCheck() {
 	if globalregister.root == nil {
+		logger.Warn("msg", "No Rootpage was provided. Using default Root page")
 		RegisterPage(nil, RootPageId, &defaultPage{})
 	}
+	if globalregister.layout == nil {
+		logger.Warn("msg", "No Layout was provided. Using default layout")
+		finish this bit
+	}
+}
+
+// Compile the pages into the required hierachy
+func Compile() error {
+	precompileCheck()
+
 	globalregister.mux.Lock()
 	defer globalregister.mux.Unlock()
 	// we are gonna be crude here. We will simply keep looping through the queued items, assigning what we can as we go through. If after a loop there are no additional queued items, we are done
@@ -97,7 +113,7 @@ func RegisterHandlers() {
 	rootPage := globalregister.root
 
 	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
-		globalHandler(rw, r, rootPage.page)
+		globalregister.globalHandler(rw, r, rootPage.page)
 	})
 	rootPage.path = "/"
 	for _, v := range rootPage.children {
@@ -109,7 +125,7 @@ func RegisterHandlers() {
 func registerHandlersAtPath(parent Page, path string, pageInfo *registeredPageInfo) {
 	basePath := strings.ReplaceAll(path+"/"+pageInfo.id, "//", "/")
 	http.HandleFunc(basePath, func(rw http.ResponseWriter, r *http.Request) {
-		globalHandler(rw, r, pageInfo.page)
+		globalregister.globalHandler(rw, r, pageInfo.page)
 	})
 	pageInfo.path = basePath
 	if compl, ok := pageInfo.page.(ComplexPage); ok {
@@ -119,6 +135,15 @@ func registerHandlersAtPath(parent Page, path string, pageInfo *registeredPageIn
 	for _, v := range pageInfo.children {
 		registerHandlersAtPath(parent, basePath, v)
 	}
+}
+
+func SetLayout(l PageLayout) {
+	if globalregister.layout != nil {
+		logger.Warnf("replacing layout of %t with new layout of %t", globalregister.layout, l)
+	} else {
+		logger.Infof("%t set as layout", l)
+	}
+	globalregister.layout = l
 }
 
 // RegisterPage adds a renderable page into the system.
@@ -165,7 +190,32 @@ func RegisterPage(parent interface{}, id string, page Page) error {
 
 }
 
-func globalHandler(w http.ResponseWriter, r *http.Request, page Page) {
+func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, page Page) {
 	ctx := newPageContext(r)
+	b := getNewBehaviour()
+	if bc, ok := page.(PageBehaviour); ok {
+		b = bc.QueryBehaviour(ctx, b)
+	}
+	if b.renderLayout && wr.layout != nil {
+		wr.layout.RenderLeading(ctx, w)
+	}
 	page.Handler(ctx, w, r)
+	if b.renderLayout && wr.layout != nil {
+		wr.layout.RenderTrailing(ctx, w)
+	}
+}
+
+type Behaviour struct {
+	renderLayout bool
+}
+
+func getNewBehaviour() Behaviour {
+	return Behaviour{
+		renderLayout: true,
+	}
+}
+
+func (b Behaviour) WithRenderLayout(v bool) Behaviour {
+	b.renderLayout = v
+	return b
 }

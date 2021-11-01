@@ -1,4 +1,4 @@
-package fancy
+package core
 
 import "reflect"
 

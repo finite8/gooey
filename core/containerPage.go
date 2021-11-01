@@ -1,4 +1,4 @@
-package fancy
+package core
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/ntaylor-barnett/gooey/pkg/register"
+	"github.com/ntaylor-barnett/gooey/register"
 )
 
 // the component container is a simple page that can display components. Each component supports the ability to render itself in the space.
@@ -49,9 +49,7 @@ func (cp *ContainerPage) Name() string {
 	return cp.name
 }
 func (cp *ContainerPage) Handler(ctx register.PageContext, w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("<html>"))
 	cp.components.WriteContent(ctx, w)
-	w.Write([]byte("</html>"))
 }
 
 func (cp *ContainerPage) OnHandlerAdded(parentPage register.Registerer) {
@@ -59,7 +57,7 @@ func (cp *ContainerPage) OnHandlerAdded(parentPage register.Registerer) {
 	cp.components.OnRegister(parentPage)
 }
 
-func WriteComponentError(ctx register.PageContext, c Component, err error, w io.Writer) {
+func WriteComponentError(ctx register.PageContext, c interface{}, err error, w io.Writer) {
 	t, e := template.New("error").Parse(ErrTemplate)
 	if e != nil {
 		log.Fatal(e)

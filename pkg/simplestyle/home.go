@@ -1,0 +1,5 @@
+package simplestyle
+
+func RegisterSimpleLayout() {
+	
+}

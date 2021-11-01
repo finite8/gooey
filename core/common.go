@@ -1,10 +1,11 @@
-package fancy
+package core
 
 import (
 	"fmt"
 	"io"
+	"strings"
 
-	"github.com/ntaylor-barnett/gooey/pkg/register"
+	"github.com/ntaylor-barnett/gooey/register"
 )
 
 // the component is the most basic element that allows itself to be rendered.
@@ -36,4 +37,19 @@ func WriteElement(ctx register.PageContext, w io.Writer, val interface{}) {
 	}
 	text := fmt.Sprintf("%v", val)
 	NewTextPrimitve(text).Write(ctx, w)
+}
+
+func createTagAttribs(vals ...string) string {
+	var attrs []string
+	for ix := 0; ix < len(vals); ix += 2 {
+		attr := vals[ix]
+		val := vals[ix+1]
+		if strings.TrimSpace(val) != "" {
+			attrs = append(attrs, fmt.Sprintf("%v=\"%v\"", attr, val))
+		}
+	}
+	if len(attrs) > 0 {
+		return fmt.Sprintf(" %v", strings.Join(attrs, " "))
+	}
+	return ""
 }
