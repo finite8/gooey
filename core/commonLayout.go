@@ -2,21 +2,21 @@ package core
 
 import (
 	"html/template"
-	"io"
+	"net/http"
 	"strings"
 
 	"github.com/ntaylor-barnett/gooey/register"
 )
 
 const (
-	leadingTemplate = `<html>
+	leadingTemplate = `
 <div id="GOOEY_header" class="GOOEY GOOEY_header">{{.Header}}</div>
 <div id="GOOEY_status" class="GOOEY GOOEY_status">{{.Status}}</div>
-<div id="GOOEY_nav" class="GOOEY GOOEY_nav">{{.Nav}}</div>
+<nav id="GOOEY_nav" class="GOOEY GOOEY_nav"><div class="GOOEY GOOEY_navcontent">{{.Nav}}</div></nav>
 <div id="GOOEY_content" class="GOOEY GOOEY_content">`
 	trailingTemplate = `</div>
 <div id="GOOEY_footer" class="GOOEY GOOEY_footer">{{.Footer}}</div>
-</html>`
+`
 )
 
 type (
@@ -55,24 +55,29 @@ func NewCommonLayout() *CommonLayout {
 
 var _ register.PageLayout = (*CommonLayout)(nil)
 
-func (cl *CommonLayout) RenderLeading(ctx register.PageContext, w io.Writer) {
+func (cl *CommonLayout) Render(ctx register.PageContext, w http.ResponseWriter, r *http.Request, pageRenderer func(ctx register.PageContext, w http.ResponseWriter, r *http.Request)) {
+
 	cl.t.Lookup("leading").Execute(w, leadingData{
 		Header: GetComponentHTML(ctx, cl.Header),
 		Status: GetComponentHTML(ctx, cl.Status),
 		Nav:    GetComponentHTML(ctx, cl.Nav),
 	})
-}
-func (cl *CommonLayout) RenderTrailing(ctx register.PageContext, w io.Writer) {
+	pageRenderer(ctx, w, r)
 	cl.t.Lookup("trailing").Execute(w, trailingData{
 		Footer: GetComponentHTML(ctx, cl.Footer),
 	})
 }
+
 func (cl *CommonLayout) OnHandlerAdded(reg register.Registerer) {
 	for _, c := range []Component{cl.Nav, cl.Status, cl.Header, cl.Footer} {
 		if c != nil {
 			c.OnRegister(reg)
 		}
 	}
+}
+
+func (cl *CommonLayout) QueryBehaviour(ctx register.PageContext, b register.Behaviour) register.Behaviour {
+	return b
 }
 func GetComponentHTML(ctx register.PageContext, c Component) template.HTML {
 	if c == nil {

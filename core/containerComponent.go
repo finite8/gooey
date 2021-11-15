@@ -6,15 +6,18 @@ import (
 	"github.com/ntaylor-barnett/gooey/register"
 )
 
-// the ContainerComponent is simply a container that can contain other containers. It provides very simple layout capabilities.
+// the LayoutComponent is simply a container that can contain other containers. It provides very simple layout capabilities.
 type ContainerComponent struct {
-	columnCount int
-	children    []Component
+	register.PageElement
+	children []Component
 }
 
-func NewContainerComponent(columnCount int) *ContainerComponent {
+func NewContainerComponent() *ContainerComponent {
 	return &ContainerComponent{
-		columnCount: columnCount,
+		PageElement: register.PageElement{
+			Kind:        register.ElementTag_Closing,
+			ElementName: "div",
+		},
 	}
 }
 
@@ -24,29 +27,18 @@ func (cc *ContainerComponent) WithComponent(c Component) *ContainerComponent {
 }
 
 func (cc *ContainerComponent) WriteContent(ctx register.PageContext, w io.Writer) {
-	io.WriteString(w, `<table>`)
-	colPos := 0
-	inRow := false
-	for _, child := range cc.children {
-		if inRow == false {
-			io.WriteString(w, "<tr>")
-			inRow = true
-		}
-		colPos++
-		io.WriteString(w, `<td><div>`)
-		child.WriteContent(ctx, w)
-		io.WriteString(w, `</div></td>`)
-		if colPos == cc.columnCount {
-			io.WriteString(w, "</tr>")
-			inRow = false
-			colPos = 0
-		}
-	}
-	if inRow {
-		io.WriteString(w, "</tr>")
-	}
 
-	io.WriteString(w, `</table>`)
+	// if cc.GetKind() != register.ElementTag_Closing {
+	// 	WriteComponentError(ctx, cc, ,w)
+	// }
+
+	for _, child := range cc.children {
+
+		io.WriteString(w, `<div>`)
+		child.WriteContent(ctx, w)
+		io.WriteString(w, `</div>`)
+
+	}
 
 }
 func (cc *ContainerComponent) OnRegister(ctx register.Registerer) {

@@ -12,6 +12,7 @@ import (
 type Component interface {
 	WriteContent(register.PageContext, io.Writer)
 	OnRegister(ctx register.Registerer)
+	GetAttributes(ctx register.PageContext) string
 }
 
 type Renderable interface {

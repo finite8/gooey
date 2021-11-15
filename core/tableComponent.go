@@ -10,6 +10,7 @@ import (
 )
 
 type TableComponent struct {
+	ComponentBase
 	dataGetter func(register.PageContext) (interface{}, error)
 }
 
@@ -52,7 +53,7 @@ func ArrayToTable(arrayOfValues interface{}) *TableData {
 				val = val.Elem()
 			}
 
-			rndr_val := NewTextPrimitve(fmt.Sprintf("%v", val.Interface()))
+			rndr_val := MakeRenderablePrimitive(val.Interface()) // NewTextPrimitve(fmt.Sprintf("%v", val.Interface()))
 			currRow = append(currRow, rndr_val)
 		}
 		table.Rows = append(table.Rows, currRow)

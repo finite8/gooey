@@ -34,6 +34,7 @@ var textStreamTemplate = template.Must(template.New("stream").Parse(`<pre id="ou
 
 // TextStreamComponent is designed to allow an implementation to keep sending updates
 type TextStreamComponent struct {
+	ComponentBase
 	streamWorker func(context.Context, chan<- string) error
 	streamPage   register.Page
 }
@@ -63,7 +64,10 @@ func (tc *TextStreamComponent) OnRegister(ctx register.Registerer) {
 		conn, _ := upgrader.Upgrade(rw, r, nil) // error ignored for sake of simplicity
 		var wg sync.WaitGroup
 		ctx, canceller := context.WithCancel(context.Background())
-
+		origCancel := canceller
+		canceller = func() {
+			origCancel()
+		}
 		txtChan := make(chan string, 50)
 
 		wg.Add(1)

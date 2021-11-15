@@ -9,7 +9,14 @@ import (
 )
 
 type ListComponent struct {
+	ComponentBase
 	dataGetter func(register.PageContext) (interface{}, error)
+}
+
+func NewListComponent(f func(register.PageContext) (interface{}, error)) *ListComponent {
+	return &ListComponent{
+		dataGetter: f,
+	}
 }
 
 func ArrayToRenderableArray(arrayOfValues interface{}) []Renderable {
@@ -33,7 +40,7 @@ func ArrayToRenderableArray(arrayOfValues interface{}) []Renderable {
 		}
 		// else, we don't REALLY know what we have here, so lets just turn it into text
 
-		rndr_val := NewTextPrimitve(fmt.Sprintf("%v", currVal))
+		rndr_val := MakeRenderablePrimitive(currVal) // NewTextPrimitve(fmt.Sprintf("%v", currVal))
 		retArr = append(retArr, rndr_val)
 
 	}
@@ -78,5 +85,9 @@ func (lc *ListComponent) WriteContent(ctx register.PageContext, w io.Writer) {
 		io.WriteString(w, `</li>`)
 	}
 	io.WriteString(w, `</ul>`)
+
+}
+
+func (lc *ListComponent) OnRegister(ctx register.Registerer) {
 
 }

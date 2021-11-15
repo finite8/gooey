@@ -16,6 +16,8 @@ type PageContext interface {
 	GetContextData() map[string][]string
 	UnmarshallData(interface{})
 	ResolveUrl(i interface{}) (*url.URL, error)
+	SiteRoot() PageStructure
+	Resolve(i interface{}, rk ResolutionKind) string
 }
 
 var _ PageContext = (*pageContext)(nil)
@@ -28,6 +30,10 @@ func newPageContext(r *http.Request) *pageContext {
 	return &pageContext{
 		request: r,
 	}
+}
+
+func (pctx *pageContext) SiteRoot() PageStructure {
+	return globalregister.getSiteStructure()
 }
 
 func (pctx *pageContext) GetContextData() map[string][]string {
@@ -48,12 +54,16 @@ func (pctx *pageContext) UnmarshallData(v interface{}) {
 
 }
 
+func (pctx *pageContext) buildUrlFromRoot(path string) string {
+	return fmt.Sprintf("%s://%s", getSchemeFromProto(pctx.request.Proto), pctx.request.Host) + path
+}
+
 func (pctx *pageContext) GetPageUrl(p Page) *url.URL {
 	info := globalregister.FindPage(p)
 	if info == nil {
 		panic("failed to resolve required page")
 	}
-	basePath := fmt.Sprintf("%s://%s", getSchemeFromProto(pctx.request.Proto), pctx.request.Host) + info.path
+	basePath := pctx.buildUrlFromRoot(info.path)
 
 	u, err := url.Parse(basePath)
 	if err != nil {
@@ -71,12 +81,34 @@ func getSchemeFromProto(proto string) string {
 	return "http"
 }
 
+func (pctx *pageContext) Resolve(i interface{}, rk ResolutionKind) string {
+	switch it := i.(type) {
+	case Resolvable:
+		return it.Resolve(pctx, rk)
+	case Page:
+		switch rk {
+		case Resolution_CSSClass:
+			return "" // a page cannot be used here
+		}
+	case string:
+		return it
+	case *string:
+		if it != nil {
+			return *it
+		}
+	}
+	return ""
+}
+
 func (pctx *pageContext) ResolveUrl(i interface{}) (*url.URL, error) {
 	if p, ok := i.(Page); ok {
 		return pctx.GetPageUrl(p), nil
 	}
 	// so, it wasn't the obvious, so lets see what else we have
 	switch v := i.(type) {
+	case GOOEYFile:
+		// this is a gooey file
+		return url.Parse(pctx.buildUrlFromRoot(v.FullPath()))
 	case string:
 		// in this case, we assume the path is relative
 		return pctx.request.URL.Parse(v)

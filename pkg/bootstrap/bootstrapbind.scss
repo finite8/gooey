@@ -1,0 +1,29 @@
+@import "src/scss/bootstrap";
+.GOOEY_nav {
+	@extend .navbar;
+	@extend .navbar-expand-lg;
+	@extend .navbar-light; 
+	@extend .bg-light;
+
+}
+
+.GOOEY_navcontent {
+	@extend .collapse;
+	@extend .navbar-collapse;
+
+}
+
+.GOOEY_navcontent>ul {
+	@extend .navbar-nav;
+
+}
+
+.GOOEY_navcontent>ul>li {
+	@extend .nav-item;
+	color: chartreuse;
+}
+
+.GOOEY_navcontent>ul>li>a {
+	@extend .nav-link;
+	color: chartreuse;
+}

@@ -17,7 +17,7 @@ func (ap *APIPage) Handler(ctx PageContext, w http.ResponseWriter, r *http.Reque
 }
 
 func (ap *APIPage) QueryBehaviour(ctx PageContext, b Behaviour) Behaviour {
-	return b.WithRenderLayout(false)
+	return b.WithRenderLayout(false).WithRenderHTML(false)
 }
 
 func NewAPIPage(name string, f func(ctx PageContext, w http.ResponseWriter, r *http.Request)) *APIPage {

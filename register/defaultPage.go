@@ -8,7 +8,7 @@ type defaultPage struct {
 }
 
 func (lp *defaultPage) Name() string {
-	return "List Packages"
+	return "Home"
 }
 func (lp *defaultPage) Handler(ctx PageContext, w http.ResponseWriter, r *http.Request) {
 	//return

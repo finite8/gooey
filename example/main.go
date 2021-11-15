@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	_ "github.com/ntaylor-barnett/gooey/example/pages"
+	_ "github.com/ntaylor-barnett/gooey/pkg/bootstrap"
 	"github.com/ntaylor-barnett/gooey/register"
 	"github.com/sirupsen/logrus"
 )

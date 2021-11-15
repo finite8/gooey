@@ -19,7 +19,7 @@ type Page interface {
 
 type ContainerPage struct {
 	name       string
-	components *ContainerComponent
+	components *LayoutComponent
 }
 
 func (cp *ContainerPage) WithName(n string) *ContainerPage {
@@ -29,7 +29,7 @@ func (cp *ContainerPage) WithName(n string) *ContainerPage {
 
 func (cp *ContainerPage) WithColumns(colCount int) *ContainerPage {
 	if cp.components == nil {
-		cp.components = NewContainerComponent(colCount)
+		cp.components = NewLayoutComponent(colCount)
 	} else {
 		cp.components.columnCount = colCount
 	}
@@ -39,7 +39,7 @@ func (cp *ContainerPage) WithColumns(colCount int) *ContainerPage {
 
 func (cp *ContainerPage) WithComponent(c Component) *ContainerPage {
 	if cp.components == nil {
-		cp.components = NewContainerComponent(1)
+		cp.components = NewLayoutComponent(1)
 	}
 	cp.components.WithComponent(c)
 	return cp
