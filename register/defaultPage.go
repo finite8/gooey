@@ -1,6 +1,7 @@
 package register
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -11,6 +12,7 @@ func (lp *defaultPage) Name() string {
 	return "Home"
 }
 func (lp *defaultPage) Handler(ctx PageContext, w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.URL.Path)
 	//return
 	// tmpl := template.Must(template.New("default"), nil)
 	// if r.Method != http.MethodPost {
