@@ -277,7 +277,9 @@ func (wr *webregister) getNewMeta(ctx PageContext) *PageHead {
 type Behaviour struct {
 	renderLayout bool
 	renderHTML   bool
-	pageMeta     *PageHead
+	// if the page is a placeholder, it cannot
+	isPlaceholder bool
+	pageMeta      *PageHead
 }
 
 func getNewBehaviour(meta *PageHead) Behaviour {
