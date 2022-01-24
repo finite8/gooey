@@ -33,6 +33,29 @@ func (vfs *VirtualFS) newChildFS(name string) *VirtualFS {
 }
 
 func (vfs *VirtualFS) SetFileString(fpath, text string) GOOEYFile {
+	return vfs.SetFileBytes(fpath, []byte(text))
+	// var dirParts []string
+	// dir, file := path.Split(fpath)
+	// target := vfs
+	// for dir != "/" && dir != "." && dir != "" {
+	// 	curr := path.Base(dir)
+	// 	dirParts = append([]string{curr}, dirParts...)
+	// 	dir = path.Dir(dir)
+	// }
+	// for _, d := range dirParts {
+	// 	found, ok := target.folders[d]
+	// 	if !ok {
+	// 		found = vfs.newChildFS(d)
+	// 		target.folders[d] = found
+	// 	}
+	// 	target = found
+	// }
+	// nf := newVirtualFile(vfs, file, []byte(text))
+	// target.files[file] = nf
+	// return nf
+}
+
+func (vfs *VirtualFS) SetFileBytes(fpath string, data []byte) GOOEYFile {
 	var dirParts []string
 	dir, file := path.Split(fpath)
 	target := vfs
@@ -45,28 +68,6 @@ func (vfs *VirtualFS) SetFileString(fpath, text string) GOOEYFile {
 		found, ok := target.folders[d]
 		if !ok {
 			found = vfs.newChildFS(d)
-			target.folders[d] = found
-		}
-		target = found
-	}
-	nf := newVirtualFile(vfs, file, []byte(text))
-	target.files[file] = nf
-	return nf
-}
-
-func (vfs *VirtualFS) SetFileBytes(fpath string, data []byte) GOOEYFile {
-	var dirParts []string
-	dir, file := path.Split(fpath)
-	target := vfs
-	for dir != "/" {
-		curr := path.Base(dir)
-		dirParts = append([]string{curr}, dirParts...)
-		dir = path.Dir(dir)
-	}
-	for _, d := range dirParts {
-		found, ok := target.folders[d]
-		if !ok {
-			found = NewVirtualFS(d)
 			target.folders[d] = found
 		}
 		target = found

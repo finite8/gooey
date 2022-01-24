@@ -26,7 +26,7 @@ func (cc *ContainerComponent) WithComponent(c Component) *ContainerComponent {
 	return cc
 }
 
-func (cc *ContainerComponent) WriteContent(ctx register.PageContext, w io.Writer) {
+func (cc *ContainerComponent) WriteContent(ctx register.PageContext, w PageWriter) {
 
 	// if cc.GetKind() != register.ElementTag_Closing {
 	// 	WriteComponentError(ctx, cc, ,w)

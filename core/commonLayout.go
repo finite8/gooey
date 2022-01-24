@@ -84,6 +84,7 @@ func GetComponentHTML(ctx register.PageContext, c Component) template.HTML {
 		return template.HTML("")
 	}
 	w := &strings.Builder{}
-	c.WriteContent(ctx, w)
+	pw := newPageWriter(ctx, w)
+	c.WriteContent(ctx, pw)
 	return template.HTML(w.String())
 }

@@ -23,7 +23,7 @@ func (cc *LayoutComponent) WithComponent(c Component) *LayoutComponent {
 	return cc
 }
 
-func (cc *LayoutComponent) WriteContent(ctx register.PageContext, w io.Writer) {
+func (cc *LayoutComponent) WriteContent(ctx register.PageContext, w PageWriter) {
 	io.WriteString(w, `<table>`)
 	colPos := 0
 	inRow := false

@@ -1,6 +1,7 @@
 package register
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 
 // PageContext provides functionality that a component or page might need to perform its functions
 type PageContext interface {
+	context.Context
 	GetPageUrl(p Page) *url.URL
 	// Context data refers to any additional parameters or modifiers that have changed how the page has been called (i.e: query string in URL)
 	GetContextData() map[string][]string
@@ -23,11 +25,13 @@ type PageContext interface {
 var _ PageContext = (*pageContext)(nil)
 
 type pageContext struct {
+	context.Context
 	request *http.Request
 }
 
-func newPageContext(r *http.Request) *pageContext {
+func newPageContext(ctx context.Context, r *http.Request) *pageContext {
 	return &pageContext{
+		Context: ctx,
 		request: r,
 	}
 }

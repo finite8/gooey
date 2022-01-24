@@ -10,7 +10,7 @@ import (
 
 // the component is the most basic element that allows itself to be rendered.
 type Component interface {
-	WriteContent(register.PageContext, io.Writer)
+	WriteContent(register.PageContext, PageWriter)
 	OnRegister(ctx register.Registerer)
 	GetAttributes(ctx register.PageContext) string
 }
@@ -19,7 +19,7 @@ type Renderable interface {
 	Write(register.PageContext, io.Writer)
 }
 
-func WriteElements(ctx register.PageContext, prefix, suffix string, w io.Writer, values ...interface{}) {
+func WriteElements(ctx register.PageContext, prefix, suffix string, w PageWriter, values ...interface{}) {
 	for _, v := range values {
 		w.Write([]byte(prefix))
 		WriteElement(ctx, w, v)
@@ -27,7 +27,7 @@ func WriteElements(ctx register.PageContext, prefix, suffix string, w io.Writer,
 	}
 }
 
-func WriteElement(ctx register.PageContext, w io.Writer, val interface{}) {
+func WriteElement(ctx register.PageContext, w PageWriter, val interface{}) {
 	if r, ok := val.(Renderable); ok {
 		r.Write(ctx, w)
 		return
@@ -38,6 +38,10 @@ func WriteElement(ctx register.PageContext, w io.Writer, val interface{}) {
 	}
 	text := fmt.Sprintf("%v", val)
 	NewTextPrimitve(text).Write(ctx, w)
+}
+
+func WriteComponent(ctx register.PageContext, w PageWriter, c Component) {
+
 }
 
 func createTagAttribs(vals ...string) string {
@@ -53,4 +57,13 @@ func createTagAttribs(vals ...string) string {
 		return fmt.Sprintf(" %v", strings.Join(attrs, " "))
 	}
 	return ""
+}
+
+type PageWriter interface {
+	io.Writer
+	RegisterComponent(c Component) RegisteredInfo
+}
+
+type RegisteredInfo struct {
+	Id string
 }

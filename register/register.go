@@ -1,11 +1,13 @@
 package register
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	logrus "github.com/sirupsen/logrus"
 )
@@ -17,6 +19,7 @@ func init() {
 		queued:       map[string]*registeredPageInfo{},
 		pageRegister: map[Page]*registeredPageInfo{},
 		fileSystems:  map[string]http.FileSystem{},
+		ctx:          context.Background(),
 	}
 	logger = logrus.New()
 
@@ -41,7 +44,11 @@ type webregister struct {
 	mux          sync.Mutex
 	layout       PageLayout
 	fileSystems  map[string]http.FileSystem
+	handler      func(w http.ResponseWriter, r *http.Request, page Page)
+	ctx          context.Context
 }
+
+type GOOEYHandlerFunc func(w http.ResponseWriter, r *http.Request, page Page)
 
 func (wr *webregister) FindPage(page Page) *registeredPageInfo {
 	return wr.pageRegister[page]
@@ -165,6 +172,8 @@ func RegisterFileSystem(name string, fs http.FileSystem) error {
 	return nil
 }
 
+func AddRequestMiddleware()
+
 // RegisterPage adds a renderable page into the system.
 // parent: either a resolvable ID or the actual page if available. If nil, it is put in a placeholder location for later referencing. parents may not exist yet at time of this being called
 func RegisterPage(parent interface{}, id string, page Page) error {
@@ -242,7 +251,22 @@ func (psd *pageStructureData) Children() []PageStructure {
 }
 
 func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, page Page) {
-	ctx := newPageContext(r)
+	if r.Method == http.MethodGet {
+		cook, err := r.Cookie("test")
+		if err != nil {
+			cook = &http.Cookie{
+				Name:    "test",
+				Value:   "hello",
+				Expires: time.Now().Add(time.Hour),
+			}
+			http.SetCookie(w, cook)
+		} else {
+			logger.Infof("cookie found: %s", cook.Value)
+		}
+
+	}
+
+	ctx := newPageContext(wr.ctx, r)
 	b := getNewBehaviour(wr.getNewMeta(ctx))
 	for _, o := range []interface{}{wr.layout, page} {
 		if bc, ok := o.(PageBehaviour); ok {

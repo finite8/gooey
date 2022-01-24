@@ -49,7 +49,14 @@ func (cp *ContainerPage) Name() string {
 	return cp.name
 }
 func (cp *ContainerPage) Handler(ctx register.PageContext, w http.ResponseWriter, r *http.Request) {
-	cp.components.WriteContent(ctx, w)
+	switch r.Method {
+	case http.MethodGet:
+		pw := newPageWriter(ctx, w)
+		cp.components.WriteContent(ctx, pw)
+	default:
+		w.WriteHeader(405)
+	}
+
 }
 
 func (cp *ContainerPage) OnHandlerAdded(parentPage register.Registerer) {
@@ -65,4 +72,28 @@ func WriteComponentError(ctx register.PageContext, c interface{}, err error, w i
 	t.Execute(w, map[string]string{
 		"Text": fmt.Sprintf("%v", err),
 	})
+}
+
+func newPageWriter(ctx register.PageContext, w io.Writer) *pageWriter {
+	return &pageWriter{
+		Writer:  w,
+		ctx:     ctx,
+		regList: make(map[Component]RegisteredInfo),
+	}
+}
+
+type pageWriter struct {
+	io.Writer
+	ctx     register.PageContext
+	regList map[Component]RegisteredInfo
+}
+
+func (pw *pageWriter) RegisterComponent(c Component) RegisteredInfo {
+	ix := len(pw.regList)
+	compId := fmt.Sprintf("cid-%v", ix)
+	ri := RegisteredInfo{
+		Id: compId,
+	}
+	pw.regList[c] = ri
+	return ri
 }

@@ -66,7 +66,7 @@ func (tc *TableComponent) OnRegister(ctx register.Registerer) {
 
 }
 
-func (tc *TableComponent) WriteContent(ctx register.PageContext, w io.Writer) {
+func (tc *TableComponent) WriteContent(ctx register.PageContext, w PageWriter) {
 	data, err := tc.dataGetter(ctx)
 	if err != nil {
 		// we need to handle this somehow

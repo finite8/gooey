@@ -1,23 +1,16 @@
-//go:generate go run ../staticerize/. -in ./css/bootstrapbind.css -out bootstrapCSS.go -pkg bootstrap -var bootstrapCSS
-
 package bootstrap
 
 import (
 	"net/http"
 
+	_ "embed"
+
 	"github.com/ntaylor-barnett/gooey/core"
 	"github.com/ntaylor-barnett/gooey/register"
 )
 
-const gooeyBootstrapBind = `
-@use 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css';
-.GOOEY_nav {
-	@extend .navbar;
-	@extend .navbar-expand-lg;
-	@extend .navbar-light; 
-	@extend .bg-light;
-}
-`
+//go:embed css/bootstrapbind.css
+var bootstrapCSS []byte
 
 func init() {
 	bl := &BootstrapLayout{
@@ -30,7 +23,7 @@ func init() {
 	navList.Style = core.NewClassStyling("navbar navbar-expand-lg navbar-light bg-light")
 	bl.Nav = navList
 
-	bl.bscFile = core.CoreFS.SetFileString("bootstrapCompat.scss", bootstrapCSS)
+	bl.bscFile = core.CoreFS.SetFileBytes("bootstrapCompat.scss", bootstrapCSS)
 	register.SetLayout(bl)
 
 }
