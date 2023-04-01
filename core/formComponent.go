@@ -2,8 +2,11 @@ package core
 
 import (
 	"fmt"
+	"html"
 	"io"
+	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/ntaylor-barnett/gooey/register"
 )
@@ -16,17 +19,22 @@ import (
 */
 
 // FormComponent
-type FormComponent struct {
-	dataGetter func(register.PageContext) (interface{}, error)
+type FormComponent[T interface{}] struct {
+	ComponentBase
+	dataGetter      func(register.PageContext) (T, error)
+	formSubmitPage  register.Page
+	fstruct         *FormStructure
+	defaultValue    T
+	onFormSubmitted func(register.PageContext, T)
 }
 
-func NewForm(dataGetter func(register.PageContext) (interface{}, error)) *FormComponent {
-	return &FormComponent{
+func NewForm[T interface{}](dataGetter func(register.PageContext) (T, error)) *FormComponent[T] {
+	return &FormComponent[T]{
 		dataGetter: dataGetter,
 	}
 }
 
-func (fc *FormComponent) WriteContent(ctx register.PageContext, w io.Writer) {
+func (fc *FormComponent[T]) WriteContent(ctx register.PageContext, w PageWriter) {
 	formData, err := fc.dataGetter(ctx)
 	if err != nil {
 		WriteComponentError(ctx, fc, err, w)
@@ -37,11 +45,57 @@ func (fc *FormComponent) WriteContent(ctx register.PageContext, w io.Writer) {
 		WriteComponentError(ctx, fc, err, w)
 		return
 	}
+	fc.fstruct = fs
 	// now we have a form structure, we can render it.
+	io.WriteString(w, fmt.Sprintf(`<form action="%s" method="post">`, ctx.GetPageUrl(fc.formSubmitPage)))
+	for _, item := range fs.Inputs {
+		io.WriteString(w, fmt.Sprintf(`<div class="form-group">
+	<label for="%s">%s</label>
+	<input type="text" class="form-control" id="%s" name="%s">
+</div>`, item.FieldName, item.Label, item.FieldName, item.FieldName))
+
+	}
+	io.WriteString(w, `<button type="submit" class="btn btn-primary">Submit</button>`)
+	io.WriteString(w, `</form>`)
 }
 
-func (fc *FormComponent) OnRegister(ctx register.Registerer) {
+func (fc *FormComponent[T]) WithSubmitHandler(f func(register.PageContext, T)) *FormComponent[T] {
+	if fc.onFormSubmitted != nil {
+		panic("onFormSubmitted has already been bound")
+	}
+	fc.onFormSubmitted = f
+	return fc
+}
 
+func (fc *FormComponent[T]) OnRegister(ctx register.Registerer) {
+	formHandlePage := register.NewAPIPage("formsubmit", func(ctx register.PageContext, w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			if fc.onFormSubmitted != nil {
+				data, _ := io.ReadAll(r.Body)
+				fields := strings.Split(string(data), "&")
+				fstruct := fc.fstruct
+				vmap := map[string]*FormField{}
+				var outVal T
+				for _, v_iter := range fstruct.Inputs {
+					v := v_iter
+					vmap[v.FieldName] = v
+				}
+				for _, setValues := range fields {
+					splt := strings.SplitN(setValues, "=", 2)
+					tField := vmap[splt[0]]
+					newVal := html.UnescapeString(splt[1])
+					tField.ValueSetter(&outVal, newVal)
+				}
+				fc.onFormSubmitted(ctx, outVal)
+			}
+
+		default:
+			w.WriteHeader(405)
+		}
+	})
+	ctx.RegisterPrivateSubPage("formsubmit", formHandlePage)
+	fc.formSubmitPage = formHandlePage
 }
 
 func CreateFormStructure(base interface{}) (*FormStructure, error) {
@@ -76,14 +130,23 @@ func reflectFormStructure(sv reflect.Value) *FormStructure {
 			//isNillable = true
 			st = st.Elem()
 		}
+
 		ff := &FormField{
 			Label:        info.Name,
 			FieldName:    info.Name,
 			DefaultValue: val.Interface(),
 		}
+		fIx := ix
 		switch st.Kind() {
 		case reflect.String:
 			ff.ValueType = StringType
+			ff.ValueSetter = func(destStruct interface{}, value string) {
+				rVal := reflect.ValueOf(destStruct).Elem()
+				fld := rVal.Field(fIx)
+				fmt.Println(fld.CanSet())
+				fmt.Println(fld.Type().String())
+				fld.SetString(value)
+			}
 		case reflect.Int, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint32, reflect.Uint64:
 			ff.ValueType = IntType
 		default:
@@ -109,7 +172,10 @@ type FormField struct {
 	FieldName    string
 	ValueType    FieldValueType
 	DefaultValue interface{}
+	ValueSetter  ReflectedValueSetter
 }
+
+type ReflectedValueSetter func(destStruct interface{}, value string)
 
 type FieldValueType byte
 

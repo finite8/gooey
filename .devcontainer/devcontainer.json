@@ -13,7 +13,7 @@
 			"NODE_VERSION": "lts/*"
 		}
 	},
-	"runArgs": [ "--init", "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
+	"runArgs": [ "--init", "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" , "--name", "GOOEY_DevContainer"],
 
 	// Set *default* container specific settings.json values on container create.
 	"settings": {

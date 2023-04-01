@@ -61,7 +61,7 @@ func createTagAttribs(vals ...string) string {
 
 type PageWriter interface {
 	io.Writer
-	RegisterComponent(c Component) RegisteredInfo
+	//RegisterComponent(c Component) RegisteredInfo
 }
 
 type RegisteredInfo struct {

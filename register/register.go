@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ntaylor-barnett/gooey/pkg/htmlwriter"
 	logrus "github.com/sirupsen/logrus"
 )
 
@@ -172,8 +174,6 @@ func RegisterFileSystem(name string, fs http.FileSystem) error {
 	return nil
 }
 
-func AddRequestMiddleware()
-
 // RegisterPage adds a renderable page into the system.
 // parent: either a resolvable ID or the actual page if available. If nil, it is put in a placeholder location for later referencing. parents may not exist yet at time of this being called
 func RegisterPage(parent interface{}, id string, page Page) error {
@@ -292,6 +292,11 @@ func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, pag
 		// we need to render our HTML stuff
 		w.Write([]byte("</html>"))
 	}
+}
+
+type PageOutput interface {
+	io.Writer
+	GetHtml() htmlwriter.HtmlElement
 }
 
 func (wr *webregister) getNewMeta(ctx PageContext) *PageHead {

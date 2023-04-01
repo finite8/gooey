@@ -1,6 +1,6 @@
 module github.com/ntaylor-barnett/gooey
 
-go 1.17
+go 1.19
 
 require (
 	github.com/c9s/c6 v0.0.0-20170806122050-f352369a91f5 // indirect

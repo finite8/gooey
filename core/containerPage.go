@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/ntaylor-barnett/gooey/pkg/htmlwriter"
 	"github.com/ntaylor-barnett/gooey/register"
 )
 
@@ -53,6 +54,7 @@ func (cp *ContainerPage) Handler(ctx register.PageContext, w http.ResponseWriter
 	case http.MethodGet:
 		pw := newPageWriter(ctx, w)
 		cp.components.WriteContent(ctx, pw)
+
 	default:
 		w.WriteHeader(405)
 	}
@@ -76,24 +78,40 @@ func WriteComponentError(ctx register.PageContext, c interface{}, err error, w i
 
 func newPageWriter(ctx register.PageContext, w io.Writer) *pageWriter {
 	return &pageWriter{
-		Writer:  w,
-		ctx:     ctx,
-		regList: make(map[Component]RegisteredInfo),
+		Writer: w,
+		ctx:    ctx,
+		//regList: make(map[Component]RegisteredInfo),
 	}
 }
 
 type pageWriter struct {
 	io.Writer
-	ctx     register.PageContext
-	regList map[Component]RegisteredInfo
+	ctx register.PageContext
+	//	regList map[Component]RegisteredInfo
 }
 
-func (pw *pageWriter) RegisterComponent(c Component) RegisteredInfo {
-	ix := len(pw.regList)
-	compId := fmt.Sprintf("cid-%v", ix)
-	ri := RegisteredInfo{
-		Id: compId,
-	}
-	pw.regList[c] = ri
-	return ri
+func (pw *pageWriter) AddTextElement(string, ...func(htmlwriter.HtmlTextElement)) htmlwriter.HtmlNodeElement {
+	return nil
 }
+
+// AddTemplatedHTML accepts either a "*html.Template" OR a string (to be interpreted as a template). The second parameter is the data to be parsed by the template
+func (pw *pageWriter) AddTemplatedHTML(interface{}, interface{}) htmlwriter.HtmlNodeElement {
+	return nil
+}
+func (pw *pageWriter) SetClosing(bool) htmlwriter.HtmlElement {
+	return nil
+}
+
+func (pw *pageWriter) AddNodeElement(string, ...func(htmlwriter.HtmlNodeElement)) htmlwriter.HtmlNodeElement {
+	return nil
+}
+
+// func (pw *pageWriter) RegisterComponent(c Component) RegisteredInfo {
+// 	ix := len(pw.regList)
+// 	compId := fmt.Sprintf("cid-%v", ix)
+// 	ri := RegisteredInfo{
+// 		Id: compId,
+// 	}
+// 	pw.regList[c] = ri
+// 	return ri
+// }
