@@ -1,11 +1,13 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"html"
 	"io"
 	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/ntaylor-barnett/gooey/register"
@@ -140,15 +142,26 @@ func reflectFormStructure(sv reflect.Value) *FormStructure {
 		switch st.Kind() {
 		case reflect.String:
 			ff.ValueType = StringType
-			ff.ValueSetter = func(destStruct interface{}, value string) {
+			ff.ValueSetter = func(destStruct interface{}, value string) error {
 				rVal := reflect.ValueOf(destStruct).Elem()
 				fld := rVal.Field(fIx)
-				fmt.Println(fld.CanSet())
-				fmt.Println(fld.Type().String())
 				fld.SetString(value)
+				return nil
 			}
-		case reflect.Int, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint32, reflect.Uint64:
+		case reflect.Int, reflect.Int32, reflect.Int64:
 			ff.ValueType = IntType
+
+			ff.ValueSetter = func(destStruct interface{}, value string) error {
+				intval, e := strconv.ParseInt(value, 10, 64)
+				if e != nil {
+					return errors.New("not an int")
+				}
+				rVal := reflect.ValueOf(destStruct).Elem()
+				fld := rVal.Field(fIx)
+
+				fld.SetInt(intval)
+				return nil
+			}
 		default:
 			// the type isn't supported
 		}
@@ -175,7 +188,7 @@ type FormField struct {
 	ValueSetter  ReflectedValueSetter
 }
 
-type ReflectedValueSetter func(destStruct interface{}, value string)
+type ReflectedValueSetter func(destStruct interface{}, value string) error
 
 type FieldValueType byte
 

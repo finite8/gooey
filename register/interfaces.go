@@ -8,7 +8,7 @@ import (
 type Page interface {
 	//	ID() string
 	Name() string
-	Handler(ctx PageContext, w http.ResponseWriter, r *http.Request)
+	Handler(ctx PageContext, w http.ResponseWriter, r *http.Request) interface{}
 }
 
 type ComplexPage interface {

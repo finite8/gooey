@@ -282,10 +282,16 @@ func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, pag
 
 	if (b.renderHTML && b.renderLayout) && wr.layout != nil {
 		w.Write([]byte("<body>"))
-		wr.layout.Render(ctx, w, r, page.Handler)
+
+		wr.layout.Render(ctx, w, r, func(ctx PageContext, w http.ResponseWriter, r *http.Request) { page.Handler(ctx, w, r) }) // don't really care about the response at this stage
 		w.Write([]byte("</body>"))
 	} else {
-		page.Handler(ctx, w, r)
+		res := page.Handler(ctx, w, r)
+		switch r := res.(type) {
+		case Page:
+			// we were given a page as a result. That means that the handler wants us to load a different page in response. 
+			
+		}
 	}
 
 	if b.renderHTML {
@@ -293,6 +299,14 @@ func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, pag
 		w.Write([]byte("</html>"))
 	}
 }
+
+type pageWrapper struct {
+	wrapedPage Page
+
+}
+
+func (pw *pageWrapper) Name() string
+func (pw *pageWrapper) Handler(ctx PageContext, w http.ResponseWriter, r *http.Request) interface{}
 
 type PageOutput interface {
 	io.Writer
