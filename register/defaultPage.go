@@ -11,7 +11,7 @@ type defaultPage struct {
 func (lp *defaultPage) Name() string {
 	return "Home"
 }
-func (lp *defaultPage) Handler(ctx PageContext, w http.ResponseWriter, r *http.Request) {
+func (lp *defaultPage) Handler(ctx PageContext, w http.ResponseWriter, r *http.Request) interface{} {
 	fmt.Println(r.URL.Path)
 	//return
 	// tmpl := template.Must(template.New("default"), nil)
@@ -21,4 +21,5 @@ func (lp *defaultPage) Handler(ctx PageContext, w http.ResponseWriter, r *http.R
 	// }
 
 	// tmpl.Execute(w, struct{ Success bool }{true})
+	return nil
 }

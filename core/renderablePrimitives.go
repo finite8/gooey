@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	"html/template"
-	"io"
 	"reflect"
 	"strings"
 
@@ -45,7 +44,7 @@ func NewTextPrimitve(val string) *TextRenderer {
 
 var Template_Text = `<span{{.Attr}}>{{.Value}}</span>`
 
-func (tr *TextRenderer) Write(ctx register.PageContext, w io.Writer) {
+func (tr *TextRenderer) Write(ctx register.PageContext, w PageWriter) {
 	t := template.Must(template.New("text").Parse(Template_Text))
 
 	t.Execute(w, map[string]string{
@@ -72,7 +71,7 @@ func NewLinkPrimitive(text, target string, dest interface{}) *LinkRenderer {
 	}
 }
 
-func (lr *LinkRenderer) Write(ctx register.PageContext, w io.Writer) {
+func (lr *LinkRenderer) Write(ctx register.PageContext, w PageWriter) {
 	// t := template.Must(template.New("link").Parse(Link_Text))
 	u, err := ctx.ResolveUrl(lr.Destination)
 	if err != nil {

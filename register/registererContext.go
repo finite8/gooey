@@ -4,6 +4,8 @@ package register
 type Registerer interface {
 	// Allows a private sub-page to be registered. This cannot be found via menus
 	RegisterPrivateSubPage(id string, newPage Page)
+	// This is the page that is the owner of the current registration process
+	ThisPage() Page
 }
 
 type registererContext struct {
@@ -14,6 +16,10 @@ func newRegistererContext(currentPage *registeredPageInfo) Registerer {
 	return &registererContext{
 		currentPage: currentPage,
 	}
+}
+
+func (rc *registererContext) ThisPage() Page {
+	return rc.currentPage.page
 }
 
 func (rc *registererContext) RegisterPrivateSubPage(id string, newPage Page) {

@@ -12,6 +12,11 @@ type LayoutComponent struct {
 	children    []Component
 }
 
+// Parentable is a component that can have children
+type ParentableComponent interface {
+	GetChildren() []Component
+}
+
 func NewLayoutComponent(columnCount int) *LayoutComponent {
 	return &LayoutComponent{
 		columnCount: columnCount,
@@ -21,6 +26,20 @@ func NewLayoutComponent(columnCount int) *LayoutComponent {
 func (cc *LayoutComponent) WithComponent(c Component) *LayoutComponent {
 	cc.children = append(cc.children, c)
 	return cc
+}
+
+func (cc *LayoutComponent) GetChildren() (ret []Component) {
+	for _, c_iter := range cc.children {
+		child := c_iter
+		ret = append(ret, child)
+		if p, ok := child.(ParentableComponent); ok {
+			carr := p.GetChildren()
+			if len(carr) > 0 {
+				ret = append(ret, carr...)
+			}
+		}
+	}
+	return
 }
 
 func (cc *LayoutComponent) WriteContent(ctx register.PageContext, w PageWriter) {

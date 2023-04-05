@@ -287,10 +287,20 @@ func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, pag
 		w.Write([]byte("</body>"))
 	} else {
 		res := page.Handler(ctx, w, r)
-		switch r := res.(type) {
+		switch v := res.(type) {
 		case Page:
-			// we were given a page as a result. That means that the handler wants us to load a different page in response. 
-			
+			// we were given a page as a result. That means that the handler wants us to load a different page in response.
+			wp := &pageWrapper{
+				wrapedPage: v,
+			}
+			if b.renderHTML {
+				// if the HTML has already been rendered, we need to make sure it does not render again.
+				wp.behaviourRewrite = func(b Behaviour) Behaviour {
+					b.renderHTML = false
+					return b
+				}
+			}
+			wr.globalHandler(w, r, wp)
 		}
 	}
 
@@ -301,12 +311,22 @@ func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, pag
 }
 
 type pageWrapper struct {
-	wrapedPage Page
-
+	wrapedPage       Page
+	behaviourRewrite func(Behaviour) Behaviour
 }
 
-func (pw *pageWrapper) Name() string
-func (pw *pageWrapper) Handler(ctx PageContext, w http.ResponseWriter, r *http.Request) interface{}
+func (pw *pageWrapper) Name() string {
+	return pw.wrapedPage.Name()
+}
+func (pw *pageWrapper) Handler(ctx PageContext, w http.ResponseWriter, r *http.Request) interface{} {
+	return pw.wrapedPage.Handler(ctx, w, r)
+}
+func (pw *pageWrapper) QueryBehaviour(ctx PageContext, b Behaviour) Behaviour {
+	if pw.behaviourRewrite != nil {
+		return pw.behaviourRewrite(b)
+	}
+	return b
+}
 
 type PageOutput interface {
 	io.Writer

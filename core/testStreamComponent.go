@@ -59,7 +59,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func (tc *TextStreamComponent) OnRegister(ctx register.Registerer) {
-	strmPage := register.NewAPIPage("stream", func(pctx register.PageContext, rw http.ResponseWriter, r *http.Request) {
+	strmPage := register.NewAPIPage("stream", func(pctx register.PageContext, rw http.ResponseWriter, r *http.Request) interface{} {
 		conn, _ := upgrader.Upgrade(rw, r, nil) // error ignored for sake of simplicity
 		var wg sync.WaitGroup
 		ctx, canceller := context.WithCancel(context.Background())
@@ -119,6 +119,7 @@ func (tc *TextStreamComponent) OnRegister(ctx register.Registerer) {
 			}
 		}()
 		wg.Wait()
+		return nil
 	})
 	ctx.RegisterPrivateSubPage("stream", strmPage)
 	tc.streamPage = strmPage

@@ -6,10 +6,13 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"net/url"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/ntaylor-barnett/gooey/register"
 )
 
@@ -23,16 +26,51 @@ import (
 // FormComponent
 type FormComponent[T interface{}] struct {
 	ComponentBase
+	uniqueId        string
 	dataGetter      func(register.PageContext) (T, error)
 	formSubmitPage  register.Page
 	fstruct         *FormStructure
 	defaultValue    T
 	onFormSubmitted func(register.PageContext, T)
+	KeepValues      bool
+}
+
+type FormTemplate[T interface{}] struct {
+	// The struct to be used
+	DefaultValue T
+	// A map that can either mappings between the field and the rule, or between the field and another map for nested structures.
+	FieldRules map[string]interface{}
+}
+
+func (ft *FormTemplate[T]) GetDefaultValue() interface{} {
+	return ft.DefaultValue
+}
+
+func (ft *FormTemplate[T]) GetFieldRules() map[string]interface{} {
+	return ft.FieldRules
+}
+
+func (fc *FormComponent[T]) WithKeepValues(keep bool) *FormComponent[T] {
+	fc.KeepValues = keep
+	return fc
+}
+
+type iformTemplate interface {
+	GetDefaultValue() interface{}
+	GetFieldRules() map[string]interface{}
+}
+
+type FieldRule struct {
+	Required    bool
+	Min         float64
+	Max         float64
+	RegexString string
 }
 
 func NewForm[T interface{}](dataGetter func(register.PageContext) (T, error)) *FormComponent[T] {
 	return &FormComponent[T]{
 		dataGetter: dataGetter,
+		uniqueId:   uuid.New().String(),
 	}
 }
 
@@ -49,12 +87,57 @@ func (fc *FormComponent[T]) WriteContent(ctx register.PageContext, w PageWriter)
 	}
 	fc.fstruct = fs
 	// now we have a form structure, we can render it.
-	io.WriteString(w, fmt.Sprintf(`<form action="%s" method="post">`, ctx.GetPageUrl(fc.formSubmitPage)))
+
+	io.WriteString(w, fmt.Sprintf(`<form action="" method="post">`))
+	var (
+		validationFailures map[string]interface{}
+		origValues         map[string]interface{}
+	)
+	if v, found := ctx.RequestCache().GetValue(fmt.Sprintf("VAL%s", fc.uniqueId)); found {
+		validationFailures = v.(map[string]interface{})
+	} else {
+		validationFailures = make(map[string]interface{})
+	}
+	if v, found := ctx.RequestCache().GetValue(fmt.Sprintf("ORIG%s", fc.uniqueId)); found {
+		origValues = v.(map[string]interface{})
+	} else {
+		origValues = make(map[string]interface{})
+	}
+
 	for _, item := range fs.Inputs {
-		io.WriteString(w, fmt.Sprintf(`<div class="form-group">
-	<label for="%s">%s</label>
-	<input type="text" class="form-control" id="%s" name="%s">
-</div>`, item.FieldName, item.Label, item.FieldName, item.FieldName))
+		t := NewTag("div", map[string]interface{}{
+			"class": "form-group",
+		}, func() (retarr []Renderable) {
+			retarr = []Renderable{
+				NewTag("label", map[string]interface{}{"for": item.FieldName}, item.Label),
+			}
+			inputTag := NewUnpairedTag("input", nil)
+			retarr = append(retarr, inputTag)
+			// we need to check for validation status
+			verr := validationFailures[item.FieldName]
+			attribs := map[string]interface{}{
+				"type":  "text",
+				"class": "form-control",
+				"id":    item.FieldName,
+				"name":  item.FieldName,
+			}
+			if verr != nil {
+				// it is in an invalid state
+				attribs["class"] = "form-control is-invalid"
+				retarr = append(retarr, NewTag("div", map[string]interface{}{"class": "invalid-feedback"}, verr))
+			}
+			if oval, ok := origValues[item.FieldName]; ok {
+				attribs["value"] = oval
+			}
+			inputTag.Attributes = attribs
+			return
+
+		})
+		w.WriteElement(ctx, t)
+		// 		io.WriteString(w, fmt.Sprintf(`<div class="form-group">
+		// 	<label for="%s">%s</label>
+		// 	<input type="text" class="form-control" id="%s" name="%s">
+		// </div>`, item.FieldName, item.Label, item.FieldName, item.FieldName))
 
 	}
 	io.WriteString(w, `<button type="submit" class="btn btn-primary">Submit</button>`)
@@ -69,36 +152,86 @@ func (fc *FormComponent[T]) WithSubmitHandler(f func(register.PageContext, T)) *
 	return fc
 }
 
-func (fc *FormComponent[T]) OnRegister(ctx register.Registerer) {
-	formHandlePage := register.NewAPIPage("formsubmit", func(ctx register.PageContext, w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost:
-			if fc.onFormSubmitted != nil {
-				data, _ := io.ReadAll(r.Body)
-				fields := strings.Split(string(data), "&")
-				fstruct := fc.fstruct
-				vmap := map[string]*FormField{}
-				var outVal T
-				for _, v_iter := range fstruct.Inputs {
-					v := v_iter
-					vmap[v.FieldName] = v
-				}
-				for _, setValues := range fields {
-					splt := strings.SplitN(setValues, "=", 2)
-					tField := vmap[splt[0]]
-					newVal := html.UnescapeString(splt[1])
-					tField.ValueSetter(&outVal, newVal)
-				}
-				fc.onFormSubmitted(ctx, outVal)
-			}
-
-		default:
-			w.WriteHeader(405)
+func (fc *FormComponent[T]) HandlePost(ctx register.PageContext, r *http.Request) PostHandlerResult {
+	if fc.onFormSubmitted != nil {
+		data, _ := io.ReadAll(r.Body)
+		fields := strings.Split(string(data), "&")
+		fstruct := fc.fstruct
+		vmap := map[string]*FormField{}
+		var outVal T
+		for _, v_iter := range fstruct.Inputs {
+			v := v_iter
+			vmap[v.FieldName] = v
 		}
-	})
-	ctx.RegisterPrivateSubPage("formsubmit", formHandlePage)
-	fc.formSubmitPage = formHandlePage
+		validationErrors := map[string]interface{}{}
+		origValues := map[string]interface{}{}
+		for _, setValues := range fields {
+			splt := strings.SplitN(setValues, "=", 2)
+			tField := vmap[splt[0]]
+			newVal := html.UnescapeString(splt[1])
+			origValues[tField.FieldName] = newVal
+			if tField.Validate != nil {
+				valErr := tField.Validate(newVal)
+				if valErr != "" {
+					validationErrors[tField.FieldName] = valErr
+					continue
+				}
+			}
+			tField.ValueSetter(&outVal, newVal)
+		}
+
+		if len(validationErrors) == 0 {
+			if fc.KeepValues {
+				ctx.RequestCache().SetValue(fmt.Sprintf("ORIG%s", fc.uniqueId), origValues)
+			}
+			fc.onFormSubmitted(ctx, outVal)
+		} else {
+			ctx.RequestCache().SetValue(fmt.Sprintf("ORIG%s", fc.uniqueId), origValues)
+			ctx.RequestCache().SetValue(fmt.Sprintf("VAL%s", fc.uniqueId), validationErrors)
+		}
+		return PostHandlerResult{
+			IsHandled: true,
+		}
+	}
+	return PostHandlerResult{}
 }
+
+func (fc *FormComponent[T]) OnRegister(rootCtx register.Registerer) {
+
+}
+
+// func (fc *FormComponent[T]) OnRegister(rootCtx register.Registerer) {
+// 	formHandlePage := register.NewAPIPage("formsubmit", func(ctx register.PageContext, w http.ResponseWriter, r *http.Request) interface{} {
+// 		switch r.Method {
+// 		case http.MethodPost:
+// 			if fc.onFormSubmitted != nil {
+// 				data, _ := io.ReadAll(r.Body)
+// 				fields := strings.Split(string(data), "&")
+// 				fstruct := fc.fstruct
+// 				vmap := map[string]*FormField{}
+// 				var outVal T
+// 				for _, v_iter := range fstruct.Inputs {
+// 					v := v_iter
+// 					vmap[v.FieldName] = v
+// 				}
+// 				for _, setValues := range fields {
+// 					splt := strings.SplitN(setValues, "=", 2)
+// 					tField := vmap[splt[0]]
+// 					newVal := html.UnescapeString(splt[1])
+// 					tField.ValueSetter(&outVal, newVal)
+// 				}
+// 				fc.onFormSubmitted(ctx, outVal)
+// 			}
+// 			return rootCtx.ThisPage()
+
+// 		default:
+// 			w.WriteHeader(405)
+// 		}
+// 		return nil
+// 	})
+// 	rootCtx.RegisterPrivateSubPage("formsubmit", formHandlePage)
+// 	fc.formSubmitPage = formHandlePage
+// }
 
 func CreateFormStructure(base interface{}) (*FormStructure, error) {
 	switch vt := base.(type) {
@@ -108,17 +241,66 @@ func CreateFormStructure(base interface{}) (*FormStructure, error) {
 		return &vt, nil
 	}
 	// if we get here, we are going to have to be a bit smarter and attempt to reflect it.
-	rv := reflect.ValueOf(base)
+	var (
+		rv         reflect.Value
+		fieldRules map[string]interface{}
+	)
+	if formTemplate, ok := base.(iformTemplate); ok {
+		templateValue := formTemplate.GetDefaultValue()
+		rv = reflect.ValueOf(templateValue)
+		fieldRules = formTemplate.GetFieldRules()
+	} else {
+		rv = reflect.ValueOf(base)
+	}
 	for rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
 	}
 	if rv.Kind() == reflect.Struct {
-		return reflectFormStructure(rv), nil
+		return reflectFormStructure(rv, fieldRules), nil
 	}
 	return nil, fmt.Errorf("don't know how to turn %T into a form", base)
 }
 
-func reflectFormStructure(sv reflect.Value) *FormStructure {
+func inferFieldRule(f reflect.StructField) *FieldRule {
+	fieldrule := f.Tag.Get("gooey")
+	if len(fieldrule) == 0 {
+		return nil
+	}
+	var rule FieldRule
+	for _, rv := range strings.Split(fieldrule, ",") {
+		parts := strings.SplitN(rv, "=", 2)
+		switch parts[0] {
+		case "required":
+			rule.Required = true
+		case "min":
+			if fv, e := strconv.ParseFloat(parts[1], 64); e != nil {
+				panic(fmt.Errorf("min value for %s is invalid: %v", f.Name, e))
+			} else {
+				rule.Min = fv
+			}
+		case "max":
+			if fv, e := strconv.ParseFloat(parts[1], 64); e != nil {
+				panic(fmt.Errorf("max value for %s is invalid: %v", f.Name, e))
+			} else {
+				rule.Max = fv
+			}
+		case "regex":
+			rString, e := url.QueryUnescape(parts[1])
+			if e != nil {
+				panic(fmt.Errorf("regex value for %s is invalid: %v", f.Name, e))
+			}
+			_, e = regexp.Compile(rString)
+			if e != nil {
+				panic(fmt.Errorf("regex value for %s could not be parsed: %v", f.Name, e))
+			}
+			rule.RegexString = rString
+
+		}
+	}
+	return &rule
+}
+
+func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *FormStructure {
 	newForm := &FormStructure{
 		Title: sv.Type().Name(),
 	}
@@ -127,6 +309,19 @@ func reflectFormStructure(sv reflect.Value) *FormStructure {
 		val := sv.Field(ix)
 		info := sinfo.Field(ix)
 		st := info.Type
+		var frule *FieldRule
+		// first part, lets try to see if we were given an explicit field rule to figure out.
+		if fmappings != nil {
+			if i, ok := fmappings[info.Name]; ok {
+				// next, we need to make sure it is a value we support
+				if fr, ok := i.(FieldRule); ok {
+					frule = &fr
+				}
+			}
+		}
+		if frule == nil {
+			frule = inferFieldRule(info)
+		}
 		//var isNillable bool
 		if st.Kind() == reflect.Ptr {
 			//isNillable = true
@@ -138,6 +333,9 @@ func reflectFormStructure(sv reflect.Value) *FormStructure {
 			FieldName:    info.Name,
 			DefaultValue: val.Interface(),
 		}
+		if frule != nil {
+			ff.Rule = *frule
+		}
 		fIx := ix
 		switch st.Kind() {
 		case reflect.String:
@@ -148,19 +346,78 @@ func reflectFormStructure(sv reflect.Value) *FormStructure {
 				fld.SetString(value)
 				return nil
 			}
+			ff.Validate = func(s string) string {
+				if ff.Rule.Min != 0 && len(s) < int(ff.Rule.Min) {
+					return fmt.Sprintf("requires a minimum of %d characters", int(ff.Rule.Min))
+				}
+				if ff.Rule.Max != 0 && len(s) > int(ff.Rule.Max) {
+					return fmt.Sprintf("cannot be greather than %d characters", int(ff.Rule.Max))
+				}
+				if ff.Rule.Required {
+					if strings.TrimSpace(s) == "" {
+						return "required"
+					}
+				}
+				if ff.Rule.RegexString != "" {
+					m, err := regexp.Match(ff.Rule.RegexString, []byte(s))
+					if err != nil {
+						return err.Error()
+					}
+					if !m {
+						return fmt.Sprintf("does not match the regex pattern: %s", ff.Rule.RegexString)
+					}
+				}
+				return ""
+			}
 		case reflect.Int, reflect.Int32, reflect.Int64:
 			ff.ValueType = IntType
 
 			ff.ValueSetter = func(destStruct interface{}, value string) error {
-				intval, e := strconv.ParseInt(value, 10, 64)
-				if e != nil {
-					return errors.New("not an int")
+				var (
+					intval int64
+					e      error
+				)
+				if value != "" {
+					intval, e = strconv.ParseInt(value, 10, 64)
+					if e != nil {
+						return errors.New("not an int")
+					}
+				} else {
+					intval = 0
 				}
 				rVal := reflect.ValueOf(destStruct).Elem()
 				fld := rVal.Field(fIx)
 
 				fld.SetInt(intval)
 				return nil
+			}
+			ff.Validate = func(s string) string {
+				if ff.Rule.Required {
+					if strings.TrimSpace(s) == "" {
+						return "required"
+					}
+				}
+				intval, e := strconv.ParseInt(s, 10, 64)
+				if e != nil {
+					return "couldn't parse the given value as an int"
+				}
+				if ff.Rule.Min != 0 && intval < int64(ff.Rule.Min) {
+					return fmt.Sprintf("cannot be less than %d", int64(ff.Rule.Min))
+				}
+				if ff.Rule.Max != 0 && intval > int64(ff.Rule.Max) {
+					return fmt.Sprintf("cannot be greather than %d", int64(ff.Rule.Max))
+				}
+
+				if ff.Rule.RegexString != "" {
+					m, err := regexp.Match(ff.Rule.RegexString, []byte(s))
+					if err != nil {
+						return err.Error()
+					}
+					if !m {
+						return fmt.Sprintf("does not match the regex pattern: %s", ff.Rule.RegexString)
+					}
+				}
+				return ""
 			}
 		default:
 			// the type isn't supported
@@ -186,6 +443,8 @@ type FormField struct {
 	ValueType    FieldValueType
 	DefaultValue interface{}
 	ValueSetter  ReflectedValueSetter
+	Validate     func(string) string
+	Rule         FieldRule
 }
 
 type ReflectedValueSetter func(destStruct interface{}, value string) error

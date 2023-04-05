@@ -20,20 +20,28 @@ type PageContext interface {
 	ResolveUrl(i interface{}) (*url.URL, error)
 	SiteRoot() PageStructure
 	Resolve(i interface{}, rk ResolutionKind) string
+	// Gets the Request cache: a key-value store that will persist for the life of the request
+	RequestCache() Cache
 }
 
 var _ PageContext = (*pageContext)(nil)
 
 type pageContext struct {
 	context.Context
-	request *http.Request
+	request  *http.Request
+	reqCache Cache
 }
 
 func newPageContext(ctx context.Context, r *http.Request) *pageContext {
 	return &pageContext{
-		Context: ctx,
-		request: r,
+		Context:  ctx,
+		request:  r,
+		reqCache: newMemoryCache(),
 	}
+}
+
+func (pctx *pageContext) RequestCache() Cache {
+	return pctx.reqCache
 }
 
 func (pctx *pageContext) SiteRoot() PageStructure {
