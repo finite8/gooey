@@ -97,7 +97,7 @@ func (tc *TableComponent) WriteContent(ctx register.PageContext, w PageWriter) {
 		}
 	}
 	// lets write the table parts
-	io.WriteString(w, `<table><tr>`)
+	io.WriteString(w, `<table class="GOOEY_table"><tr>`)
 	WriteElements(ctx, "<th>", "</th>", w, table.Headers...)
 	io.WriteString(w, `</tr>`)
 	for _, row := range table.Rows {
