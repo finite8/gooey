@@ -17,10 +17,10 @@ type inputPage struct {
 
 func NewInput() *inputPage {
 	ip := &inputPage{}
-	ip.WithName("Input Form").WithComponent(core.NewForm(func(pc register.PageContext) (TestStruct, error) {
+	ip.WithName("Input Form").WithComponent(core.MustNewForm(func(pc register.PageContext) TestStruct {
 		return TestStruct{
 			Name: "default name",
-		}, nil
+		}
 	}).WithSubmitHandler(func(pc register.PageContext, ts TestStruct) {
 		d, _ := json.Marshal(ts)
 		fmt.Println(string(d))
@@ -33,7 +33,8 @@ func NewInput() *inputPage {
 }
 
 type TestStruct struct {
-	Name    string `gooey:"min=2,max=10"`
-	Address string
-	Age     int
+	Name     string `gooey:"min=2,max=10"`
+	Address  string
+	Religion *string
+	Age      int
 }

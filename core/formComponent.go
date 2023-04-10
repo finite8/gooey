@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -11,6 +10,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 	"github.com/ntaylor-barnett/gooey/register"
@@ -26,13 +27,12 @@ import (
 // FormComponent
 type FormComponent[T interface{}] struct {
 	ComponentBase
-	uniqueId        string
-	dataGetter      func(register.PageContext) (T, error)
-	formSubmitPage  register.Page
-	fstruct         *FormStructure
-	defaultValue    T
-	onFormSubmitted func(register.PageContext, T)
-	KeepValues      bool
+	uniqueId string
+	//dataGetter         func(register.PageContext) (T, error)
+	fstruct            *FormStructure
+	defaultValueGetter func(register.PageContext) T
+	onFormSubmitted    func(register.PageContext, T)
+	KeepValues         bool
 }
 
 type FormTemplate[T interface{}] struct {
@@ -67,28 +67,37 @@ type FieldRule struct {
 	RegexString string
 }
 
-func NewForm[T interface{}](dataGetter func(register.PageContext) (T, error)) *FormComponent[T] {
-	return &FormComponent[T]{
-		dataGetter: dataGetter,
-		uniqueId:   uuid.New().String(),
+func NewForm[T interface{}](defaultValueGetter func(register.PageContext) T) (*FormComponent[T], error) {
+	fc := &FormComponent[T]{
+		defaultValueGetter: defaultValueGetter,
+		uniqueId:           uuid.New().String(),
 	}
+	var templateValue T
+	fs, err := CreateFormStructure(templateValue)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to establish form structure")
+	}
+	fc.fstruct = fs
+	return fc, nil
+}
+
+func MustNewForm[T interface{}](defaultValueGetter func(register.PageContext) T) *FormComponent[T] {
+	fc, err := NewForm(defaultValueGetter)
+	if err != nil {
+		panic(err)
+	}
+	return fc
 }
 
 func (fc *FormComponent[T]) WriteContent(ctx register.PageContext, w PageWriter) {
-	formData, err := fc.dataGetter(ctx)
-	if err != nil {
-		WriteComponentError(ctx, fc, err, w)
-		return
-	}
-	fs, err := CreateFormStructure(formData)
-	if err != nil {
-		WriteComponentError(ctx, fc, err, w)
-		return
-	}
-	fc.fstruct = fs
+	defaultValue := fc.defaultValueGetter(ctx)
+	// if err != nil {
+	// 	WriteComponentError(ctx, fc, err, w)
+	// 	return
+	// }
+
 	// now we have a form structure, we can render it.
 
-	io.WriteString(w, fmt.Sprintf(`<form action="" method="post">`))
 	var (
 		validationFailures map[string]interface{}
 		origValues         map[string]interface{}
@@ -103,8 +112,8 @@ func (fc *FormComponent[T]) WriteContent(ctx register.PageContext, w PageWriter)
 	} else {
 		origValues = make(map[string]interface{})
 	}
-
-	for _, item := range fs.Inputs {
+	io.WriteString(w, `<form action="" method="post">`)
+	for _, item := range fc.fstruct.Inputs {
 		t := NewTag("div", map[string]interface{}{
 			"class": "form-group",
 		}, func() (retarr []Renderable) {
@@ -128,6 +137,19 @@ func (fc *FormComponent[T]) WriteContent(ctx register.PageContext, w PageWriter)
 			}
 			if oval, ok := origValues[item.FieldName]; ok {
 				attribs["value"] = oval
+			} else {
+				// now we need to see if we have a default value.
+				dv := item.ValueGetter(defaultValue)
+				if dv != nil {
+					// because fmt.Sprint does not work well with pointers. We need to reflect first to dereference it
+					rf := reflect.ValueOf(dv)
+					if !rf.IsZero() {
+						if rf.Kind() == reflect.Ptr {
+							dv = rf.Elem().Interface()
+						}
+						attribs["value"] = dv
+					}
+				}
 			}
 			inputTag.Attributes = attribs
 			return
@@ -154,6 +176,7 @@ func (fc *FormComponent[T]) WithSubmitHandler(f func(register.PageContext, T)) *
 
 func (fc *FormComponent[T]) HandlePost(ctx register.PageContext, r *http.Request) PostHandlerResult {
 	if fc.onFormSubmitted != nil {
+
 		data, _ := io.ReadAll(r.Body)
 		fields := strings.Split(string(data), "&")
 		fstruct := fc.fstruct
@@ -322,9 +345,9 @@ func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *F
 		if frule == nil {
 			frule = inferFieldRule(info)
 		}
-		//var isNillable bool
+		var isNillable bool
 		if st.Kind() == reflect.Ptr {
-			//isNillable = true
+			isNillable = true
 			st = st.Elem()
 		}
 
@@ -333,17 +356,29 @@ func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *F
 			FieldName:    info.Name,
 			DefaultValue: val.Interface(),
 		}
+		fIx := ix
+		ff.ValueGetter = func(i interface{}) interface{} {
+			rVal := reflect.ValueOf(i)
+			fld := rVal.Field(fIx)
+			return fld.Interface()
+		}
 		if frule != nil {
 			ff.Rule = *frule
 		}
-		fIx := ix
+
 		switch st.Kind() {
 		case reflect.String:
 			ff.ValueType = StringType
 			ff.ValueSetter = func(destStruct interface{}, value string) error {
 				rVal := reflect.ValueOf(destStruct).Elem()
 				fld := rVal.Field(fIx)
-				fld.SetString(value)
+				if isNillable {
+					rvts := reflect.ValueOf(&value)
+
+					fld.Set(rvts)
+				} else {
+					fld.SetString(value)
+				}
 				return nil
 			}
 			ff.Validate = func(s string) string {
@@ -443,6 +478,7 @@ type FormField struct {
 	ValueType    FieldValueType
 	DefaultValue interface{}
 	ValueSetter  ReflectedValueSetter
+	ValueGetter  func(interface{}) interface{}
 	Validate     func(string) string
 	Rule         FieldRule
 }
