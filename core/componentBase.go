@@ -5,7 +5,12 @@ import "github.com/ntaylor-barnett/gooey/register"
 // all components should share this
 type ComponentBase struct {
 	*register.AttibutingElement
-	Style Styling
+	Style     Styling
+	currstate renderstate
+}
+
+func (cb *ComponentBase) setRenderState(s renderstate) {
+	cb.currstate = s
 }
 
 func (cb *ComponentBase) GetAttributes(ctx register.PageContext) string {

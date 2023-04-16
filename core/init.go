@@ -1,11 +1,16 @@
 package core
 
-import "github.com/ntaylor-barnett/gooey/register"
+import (
+	"sort"
+
+	"github.com/ntaylor-barnett/gooey/register"
+)
 
 func init() {
 	cl := NewCommonLayout()
 	cl.Nav = NewListComponent(func(pc register.PageContext) (interface{}, error) {
-		navPages := append([]register.PageStructure{pc.SiteRoot()}, pc.SiteRoot().Children()...)
+		navPages := append(register.PageStructureCollection{pc.SiteRoot()}, pc.SiteRoot().Children()...)
+		sort.Sort(navPages)
 		return navPages, nil
 	})
 	register.DefaultLayout = cl

@@ -12,7 +12,8 @@ import (
 
 // the component is the most basic element that allows itself to be rendered.
 type Component interface {
-	WriteContent(register.PageContext, PageWriter)
+	Renderable
+	setRenderState(s renderstate)
 	OnRegister(ctx register.Registerer)
 	GetAttributes(ctx register.PageContext) string
 }
@@ -27,10 +28,19 @@ type PostHandlerResult struct {
 	IsHandled bool
 	// set to true if calling HandlePost should stop.
 	HaltProcessing bool
+	Error          error
 }
 
 type Renderable interface {
 	Write(register.PageContext, PageWriter)
+}
+
+type RenderableArray []Renderable
+
+func (rarr RenderableArray) Write(ctx register.PageContext, w PageWriter) {
+	for _, r := range rarr {
+		r.Write(ctx, w)
+	}
 }
 
 func WriteElements(ctx register.PageContext, prefix, suffix string, w PageWriter, values ...interface{}) {
@@ -50,14 +60,14 @@ func WriteElement(ctx register.PageContext, w PageWriter, val interface{}) {
 			item.Write(ctx, w)
 		}
 	case Component:
-		v.WriteContent(ctx, w)
+		v.Write(ctx, w)
 	default:
 		text := fmt.Sprintf("%v", v)
 		NewTextPrimitve(text).Write(ctx, w)
 	}
 }
 
-func WriteComponent(ctx register.PageContext, w PageWriter, c Component) {
+func Write(ctx register.PageContext, w PageWriter, c Component) {
 
 }
 
@@ -129,6 +139,7 @@ func (tp *TagPrimitive) Write(ctx register.PageContext, w PageWriter) {
 		w.Write([]byte(">"))
 	} else {
 		if tp.InnerText != nil {
+			w.Write([]byte(">"))
 			WriteElement(ctx, w, tp.InnerText)
 			w.Write([]byte(fmt.Sprintf("</%s>", tp.Name)))
 		} else {

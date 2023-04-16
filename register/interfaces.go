@@ -2,6 +2,7 @@ package register
 
 import (
 	"net/http"
+	"strings"
 )
 
 // a basic page info reference
@@ -31,7 +32,23 @@ type PageBehaviour interface {
 type PageStructure interface {
 	Page() Page
 	Title() string
+	Weight() int
 	Children() []PageStructure
+}
+
+type PageStructureCollection []PageStructure
+
+func (s PageStructureCollection) Len() int {
+	return len(s)
+}
+func (s PageStructureCollection) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s PageStructureCollection) Less(i, j int) bool {
+	if s[i].Weight() == s[j].Weight() {
+		return strings.Compare(s[i].Title(), s[j].Title()) < 0
+	}
+	return s[i].Weight() < s[j].Weight()
 }
 
 // Resolvable is something that can be translated into a string

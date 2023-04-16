@@ -46,7 +46,7 @@ func NewStreamComponent(f func(context.Context, chan<- string) error) *TextStrea
 
 }
 
-func (tc *TextStreamComponent) WriteContent(ctx register.PageContext, w PageWriter) {
+func (tc *TextStreamComponent) Write(ctx register.PageContext, w PageWriter) {
 	strmUrl := ctx.GetPageUrl(tc.streamPage)
 	var tmplLoad struct{ StreamURL template.URL }
 	tmplLoad.StreamURL = template.URL(strmUrl.Host + strmUrl.Path)

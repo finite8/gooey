@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
 
 	"github.com/sirupsen/logrus"
 )
@@ -22,6 +23,8 @@ type PageContext interface {
 	Resolve(i interface{}, rk ResolutionKind) string
 	// Gets the Request cache: a key-value store that will persist for the life of the request
 	RequestCache() Cache
+	// GetNewSequence returns a new unique incrementing number that can be used to create unique elements on a page
+	GetNewSequence() uint64
 }
 
 var _ PageContext = (*pageContext)(nil)
@@ -30,6 +33,7 @@ type pageContext struct {
 	context.Context
 	request  *http.Request
 	reqCache Cache
+	sequence uint64
 }
 
 func newPageContext(ctx context.Context, r *http.Request) *pageContext {
@@ -38,6 +42,10 @@ func newPageContext(ctx context.Context, r *http.Request) *pageContext {
 		request:  r,
 		reqCache: newMemoryCache(),
 	}
+}
+
+func (pctx *pageContext) GetNewSequence() uint64 {
+	return atomic.AddUint64(&pctx.sequence, 1)
 }
 
 func (pctx *pageContext) RequestCache() Cache {

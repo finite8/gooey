@@ -56,7 +56,7 @@ func (cp *ContainerPage) Handler(ctx register.PageContext, w http.ResponseWriter
 	switch r.Method {
 	case http.MethodGet:
 		pw = newPageWriter(ctx, w)
-		cp.components.WriteContent(ctx, pw)
+		cp.components.Write(ctx, pw)
 	case http.MethodPost:
 		// we now need to go through all of our post handlers to see if something needs to be done.
 		isHandled := false
@@ -72,7 +72,7 @@ func (cp *ContainerPage) Handler(ctx register.PageContext, w http.ResponseWriter
 		if isHandled {
 			// the post has been handled by a component. We can continue rendering
 			pw = newPageWriter(ctx, w)
-			cp.components.WriteContent(ctx, pw)
+			cp.components.Write(ctx, pw)
 		} else {
 			WriteComponentError(ctx, nil, errors.New("the POST data wa either invalid or not handled by any component"), w)
 			w.WriteHeader(400)

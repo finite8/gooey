@@ -223,7 +223,8 @@ func (wr *webregister) getSiteStructure() PageStructure {
 }
 
 type pageStructureData struct {
-	page Page
+	page   Page
+	weight int
 }
 
 func createpageStructureData(p Page) *pageStructureData {
@@ -234,6 +235,10 @@ func createpageStructureData(p Page) *pageStructureData {
 
 func (psd *pageStructureData) Page() Page {
 	return psd.page
+}
+
+func (psd *pageStructureData) Weight() int {
+	return psd.weight
 }
 func (psd *pageStructureData) Title() string {
 	return psd.page.Name()

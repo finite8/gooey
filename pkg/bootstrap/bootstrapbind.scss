@@ -31,3 +31,19 @@
 .GOOEY_table {
 	@extend .table;
 }
+
+.GOOEY_content {
+	@extend .ms-3;
+}
+// a formgroup represents a label, its input and its validation items
+.GOOEY_formgroup {
+	@extend .ms-3;
+}
+
+.GOOEY_formlabel {
+	@extend .form-label;
+}
+
+.GOOEY_forminput {
+	@extend .form-control;
+}

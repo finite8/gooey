@@ -2,6 +2,7 @@ package register
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -33,7 +34,17 @@ func getInterfaceString(v interface{}) string {
 		return *vt
 	case string:
 		return vt
+	case url.URL:
+		return vt.String()
+	case *url.URL:
+		return vt.String()
+	case Pathable:
+		return vt.FullPath()
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+type Pathable interface {
+	FullPath() string
 }

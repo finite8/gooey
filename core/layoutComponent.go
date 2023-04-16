@@ -42,7 +42,7 @@ func (cc *LayoutComponent) GetChildren() (ret []Component) {
 	return
 }
 
-func (cc *LayoutComponent) WriteContent(ctx register.PageContext, w PageWriter) {
+func (cc *LayoutComponent) Write(ctx register.PageContext, w PageWriter) {
 	io.WriteString(w, `<table>`)
 	colPos := 0
 	inRow := false
@@ -53,7 +53,7 @@ func (cc *LayoutComponent) WriteContent(ctx register.PageContext, w PageWriter) 
 		}
 		colPos++
 		io.WriteString(w, `<td><div>`)
-		child.WriteContent(ctx, w)
+		child.Write(ctx, w)
 		io.WriteString(w, `</div></td>`)
 		if colPos == cc.columnCount {
 			io.WriteString(w, "</tr>")

@@ -26,7 +26,7 @@ func (cc *ContainerComponent) WithComponent(c Component) *ContainerComponent {
 	return cc
 }
 
-func (cc *ContainerComponent) WriteContent(ctx register.PageContext, w PageWriter) {
+func (cc *ContainerComponent) Write(ctx register.PageContext, w PageWriter) {
 
 	// if cc.GetKind() != register.ElementTag_Closing {
 	// 	WriteComponentError(ctx, cc, ,w)
@@ -35,7 +35,7 @@ func (cc *ContainerComponent) WriteContent(ctx register.PageContext, w PageWrite
 	for _, child := range cc.children {
 
 		io.WriteString(w, `<div>`)
-		child.WriteContent(ctx, w)
+		child.Write(ctx, w)
 		io.WriteString(w, `</div>`)
 
 	}

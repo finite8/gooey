@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"html"
 	"io"
 	"net/http"
 	"net/url"
@@ -89,7 +88,97 @@ func MustNewForm[T interface{}](defaultValueGetter func(register.PageContext) T)
 	return fc
 }
 
-func (fc *FormComponent[T]) WriteContent(ctx register.PageContext, w PageWriter) {
+func buildFormField(item *FormField, defaultValue interface{}, origValues, validationFailures PathedMap[string]) (retarr []Renderable) {
+	retarr = []Renderable{
+		NewTag("label", map[string]interface{}{
+			"for":   item.FieldName,
+			"class": "GOOEY_formlabel"}, item.Label),
+	}
+	inputTag := NewUnpairedTag("input", nil)
+	retarr = append(retarr, inputTag)
+	// we need to check for validation status
+	verr, vErrExists := validationFailures.Get(item.Path)
+	attribs := map[string]interface{}{
+		"type":  "text",
+		"class": "GOOEY_forminput",
+		"id":    item.Path,
+		"name":  item.Path,
+	}
+	if vErrExists {
+		// it is in an invalid state
+		attribs["class"] = "GOOEY_forminput is-invalid"
+		retarr = append(retarr, NewTag("div", map[string]interface{}{"class": "invalid-feedback"}, verr))
+	}
+	if oval, ok := origValues.Get(item.Path); ok {
+		attribs["value"] = oval
+	} else {
+		// now we need to see if we have a default value.
+		dv := item.ValueGetter(defaultValue)
+		if dv != nil {
+			// because fmt.Sprint does not work well with pointers. We need to reflect first to dereference it
+			rf := reflect.ValueOf(dv)
+			if !rf.IsZero() {
+				if rf.Kind() == reflect.Ptr {
+					dv = rf.Elem().Interface()
+				}
+				attribs["value"] = dv
+			}
+		}
+	}
+	inputTag.Attributes = attribs
+	return
+}
+
+func getSubMap(inMap map[string]interface{}, key string) map[string]interface{} {
+	if v, ok := inMap[key]; ok {
+		if v, ok := v.(map[string]interface{}); ok {
+			return v
+		}
+	}
+	return nil
+}
+
+func buildFormElements(f *FormStructure, defaultValue interface{}, origValues, validationFailures PathedMap[string]) (retarr []Renderable) {
+	for _, item := range f.Inputs {
+		t := NewTag("div", map[string]interface{}{
+			"class": "GOOEY_formgroup",
+		}, func() (retarr []Renderable) {
+			if item.SubStructure == nil {
+				arr := buildFormField(item, defaultValue, origValues, validationFailures)
+				return arr
+
+			} else {
+				dv := item.ValueGetter(defaultValue)
+				if dv == nil || reflect.ValueOf(dv).IsZero() {
+					dv = item.DefaultValue
+				}
+				arr := buildFormElements(item.SubStructure, dv, origValues, validationFailures)
+				retArr := []Renderable{
+					NewTag("label", map[string]interface{}{
+						"for":   item.Path,
+						"class": "GOOEY_formlabel"}, item.Label),
+				}
+				retArr = append(retArr, arr...)
+
+				return []Renderable{
+					NewTag("div", map[string]interface{}{
+						"class": "GOOEY_formgroup",
+					}, retArr),
+				}
+			}
+
+		})
+		retarr = append(retarr, t)
+		// 		io.WriteString(w, fmt.Sprintf(`<div class="form-group">
+		// 	<label for="%s">%s</label>
+		// 	<input type="text" class="form-control" id="%s" name="%s">
+		// </div>`, item.FieldName, item.Label, item.FieldName, item.FieldName))
+
+	}
+	return
+}
+
+func (fc *FormComponent[T]) Write(ctx register.PageContext, w PageWriter) {
 	defaultValue := fc.defaultValueGetter(ctx)
 	// if err != nil {
 	// 	WriteComponentError(ctx, fc, err, w)
@@ -99,68 +188,23 @@ func (fc *FormComponent[T]) WriteContent(ctx register.PageContext, w PageWriter)
 	// now we have a form structure, we can render it.
 
 	var (
-		validationFailures map[string]interface{}
-		origValues         map[string]interface{}
+		validationFailures PathedMap[string]
+		origValues         PathedMap[string]
 	)
 	if v, found := ctx.RequestCache().GetValue(fmt.Sprintf("VAL%s", fc.uniqueId)); found {
-		validationFailures = v.(map[string]interface{})
+		validationFailures = v.(PathedMap[string])
 	} else {
-		validationFailures = make(map[string]interface{})
+		validationFailures = make(PathedMap[string])
 	}
 	if v, found := ctx.RequestCache().GetValue(fmt.Sprintf("ORIG%s", fc.uniqueId)); found {
-		origValues = v.(map[string]interface{})
+		origValues = v.(PathedMap[string])
 	} else {
-		origValues = make(map[string]interface{})
+		origValues = make(PathedMap[string])
 	}
 	io.WriteString(w, `<form action="" method="post">`)
-	for _, item := range fc.fstruct.Inputs {
-		t := NewTag("div", map[string]interface{}{
-			"class": "form-group",
-		}, func() (retarr []Renderable) {
-			retarr = []Renderable{
-				NewTag("label", map[string]interface{}{"for": item.FieldName}, item.Label),
-			}
-			inputTag := NewUnpairedTag("input", nil)
-			retarr = append(retarr, inputTag)
-			// we need to check for validation status
-			verr := validationFailures[item.FieldName]
-			attribs := map[string]interface{}{
-				"type":  "text",
-				"class": "form-control",
-				"id":    item.FieldName,
-				"name":  item.FieldName,
-			}
-			if verr != nil {
-				// it is in an invalid state
-				attribs["class"] = "form-control is-invalid"
-				retarr = append(retarr, NewTag("div", map[string]interface{}{"class": "invalid-feedback"}, verr))
-			}
-			if oval, ok := origValues[item.FieldName]; ok {
-				attribs["value"] = oval
-			} else {
-				// now we need to see if we have a default value.
-				dv := item.ValueGetter(defaultValue)
-				if dv != nil {
-					// because fmt.Sprint does not work well with pointers. We need to reflect first to dereference it
-					rf := reflect.ValueOf(dv)
-					if !rf.IsZero() {
-						if rf.Kind() == reflect.Ptr {
-							dv = rf.Elem().Interface()
-						}
-						attribs["value"] = dv
-					}
-				}
-			}
-			inputTag.Attributes = attribs
-			return
-
-		})
-		w.WriteElement(ctx, t)
-		// 		io.WriteString(w, fmt.Sprintf(`<div class="form-group">
-		// 	<label for="%s">%s</label>
-		// 	<input type="text" class="form-control" id="%s" name="%s">
-		// </div>`, item.FieldName, item.Label, item.FieldName, item.FieldName))
-
+	{
+		formElements := buildFormElements(fc.fstruct, defaultValue, origValues, validationFailures)
+		w.WriteElement(ctx, formElements)
 	}
 	io.WriteString(w, `<button type="submit" class="btn btn-primary">Submit</button>`)
 	io.WriteString(w, `</form>`)
@@ -174,33 +218,97 @@ func (fc *FormComponent[T]) WithSubmitHandler(f func(register.PageContext, T)) *
 	return fc
 }
 
+type PathedMap[T interface{}] map[string]interface{}
+
+func (pm PathedMap[T]) Get(path string) (T, bool) {
+	var defaultValue T
+	parts := strings.SplitN(path, ".", 2)
+	mv, ok := pm[parts[0]]
+	if !ok {
+		return defaultValue, false
+	}
+	if len(parts) == 2 {
+		subMap, ok := mv.(PathedMap[T])
+		if !ok {
+			return defaultValue, false // this could be a panic but we will treat it as not found
+		}
+		return subMap.Get(parts[1])
+	}
+	if retVal, ok := mv.(T); ok {
+		return retVal, true
+	} else {
+		return defaultValue, false
+	}
+}
+
+func (pm PathedMap[T]) Set(path string, value T) {
+	parts := strings.SplitN(path, ".", 2)
+	mv, ok := pm[parts[0]]
+	if !ok {
+		// great, it doesn't exist. Lets set it
+		if len(parts) == 2 {
+			// it has more than one path. We have to continue down the chain.
+			subMap := make(PathedMap[T])
+			pm[parts[0]] = subMap
+			subMap.Set(parts[1], value)
+			return // handled. return.
+		}
+	} else {
+		// the value already exists. Maybe uh oh
+		if len(parts) == 2 {
+			// we now need to test to see if this is a complex path or not
+			subMap, ok := mv.(PathedMap[T])
+			if !ok {
+				subMap := make(PathedMap[T])
+				pm[parts[0]] = subMap // if it was not a submap, then we overwrite it with a submap
+			}
+			subMap.Set(parts[1], value)
+			return
+		}
+	}
+	pm[parts[0]] = value
+}
+
 func (fc *FormComponent[T]) HandlePost(ctx register.PageContext, r *http.Request) PostHandlerResult {
 	if fc.onFormSubmitted != nil {
-
-		data, _ := io.ReadAll(r.Body)
-		fields := strings.Split(string(data), "&")
-		fstruct := fc.fstruct
-		vmap := map[string]*FormField{}
-		var outVal T
-		for _, v_iter := range fstruct.Inputs {
-			v := v_iter
-			vmap[v.FieldName] = v
+		if len(r.Form) == 0 {
+			r.ParseForm()
 		}
-		validationErrors := map[string]interface{}{}
-		origValues := map[string]interface{}{}
-		for _, setValues := range fields {
-			splt := strings.SplitN(setValues, "=", 2)
-			tField := vmap[splt[0]]
-			newVal := html.UnescapeString(splt[1])
-			origValues[tField.FieldName] = newVal
+		//data, _ := io.ReadAll(r.Body)
+		//fields := strings.Split(string(data), "&")
+		fstruct := fc.fstruct
+
+		var outVal T
+		vmap := fstruct.GetMap()
+		validationErrors := make(PathedMap[string])
+		origValues := make(PathedMap[string])
+		for key, value := range r.Form {
+			newVal := value[0]
+			tField, err := vmap.GetField(key)
+			if err != nil {
+				return PostHandlerResult{
+					IsHandled:      false,
+					HaltProcessing: false,
+					Error:          err,
+				}
+			}
+			origValues.Set(tField.Path, newVal)
 			if tField.Validate != nil {
 				valErr := tField.Validate(newVal)
 				if valErr != "" {
-					validationErrors[tField.FieldName] = valErr
+					validationErrors.Set(tField.Path, valErr)
 					continue
 				}
 			}
-			tField.ValueSetter(&outVal, newVal)
+			err = vmap.SetFieldValue(key, &outVal, newVal)
+			if err != nil {
+				return PostHandlerResult{
+					IsHandled:      false,
+					HaltProcessing: true,
+					Error:          err,
+				}
+			}
+
 		}
 
 		if len(validationErrors) == 0 {
@@ -222,39 +330,6 @@ func (fc *FormComponent[T]) HandlePost(ctx register.PageContext, r *http.Request
 func (fc *FormComponent[T]) OnRegister(rootCtx register.Registerer) {
 
 }
-
-// func (fc *FormComponent[T]) OnRegister(rootCtx register.Registerer) {
-// 	formHandlePage := register.NewAPIPage("formsubmit", func(ctx register.PageContext, w http.ResponseWriter, r *http.Request) interface{} {
-// 		switch r.Method {
-// 		case http.MethodPost:
-// 			if fc.onFormSubmitted != nil {
-// 				data, _ := io.ReadAll(r.Body)
-// 				fields := strings.Split(string(data), "&")
-// 				fstruct := fc.fstruct
-// 				vmap := map[string]*FormField{}
-// 				var outVal T
-// 				for _, v_iter := range fstruct.Inputs {
-// 					v := v_iter
-// 					vmap[v.FieldName] = v
-// 				}
-// 				for _, setValues := range fields {
-// 					splt := strings.SplitN(setValues, "=", 2)
-// 					tField := vmap[splt[0]]
-// 					newVal := html.UnescapeString(splt[1])
-// 					tField.ValueSetter(&outVal, newVal)
-// 				}
-// 				fc.onFormSubmitted(ctx, outVal)
-// 			}
-// 			return rootCtx.ThisPage()
-
-// 		default:
-// 			w.WriteHeader(405)
-// 		}
-// 		return nil
-// 	})
-// 	rootCtx.RegisterPrivateSubPage("formsubmit", formHandlePage)
-// 	fc.formSubmitPage = formHandlePage
-// }
 
 func CreateFormStructure(base interface{}) (*FormStructure, error) {
 	switch vt := base.(type) {
@@ -279,7 +354,7 @@ func CreateFormStructure(base interface{}) (*FormStructure, error) {
 		rv = rv.Elem()
 	}
 	if rv.Kind() == reflect.Struct {
-		return reflectFormStructure(rv, fieldRules), nil
+		return reflectFormStructure("", rv, fieldRules)
 	}
 	return nil, fmt.Errorf("don't know how to turn %T into a form", base)
 }
@@ -323,7 +398,7 @@ func inferFieldRule(f reflect.StructField) *FieldRule {
 	return &rule
 }
 
-func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *FormStructure {
+func reflectFormStructure(prefix string, sv reflect.Value, fmappings map[string]interface{}) (*FormStructure, error) {
 	newForm := &FormStructure{
 		Title: sv.Type().Name(),
 	}
@@ -350,16 +425,52 @@ func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *F
 			isNillable = true
 			st = st.Elem()
 		}
+		var defaultValue interface{}
+		if !val.IsZero() {
+			if isNillable {
+				defaultValue = val.Elem().Interface()
+			} else {
+				defaultValue = val.Interface()
+			}
+		} else {
 
+			defaultValue = reflect.New(st).Elem().Interface()
+		}
 		ff := &FormField{
 			Label:        info.Name,
 			FieldName:    info.Name,
-			DefaultValue: val.Interface(),
+			DefaultValue: defaultValue,
+		}
+		if prefix == "" {
+			ff.Path = info.Name
+		} else {
+			ff.Path = fmt.Sprintf("%s.%s", prefix, info.Name)
 		}
 		fIx := ix
 		ff.ValueGetter = func(i interface{}) interface{} {
 			rVal := reflect.ValueOf(i)
+
+			for rVal.Kind() == reflect.Pointer {
+				if rVal.IsNil() {
+					return nil
+				}
+				rVal = rVal.Elem()
+
+			}
+			// if rVal.IsZero() {
+			// 	return nil
+			// }
 			fld := rVal.Field(fIx)
+			if fld.Kind() == reflect.Pointer {
+				if fld.IsNil() {
+					return nil
+				}
+			}
+			// if fld.IsZero() {
+			// 	if fld.Kind() == reflect.Pointer {
+			// 		return nil
+			// 	}
+			// }
 			return fld.Interface()
 		}
 		if frule != nil {
@@ -370,7 +481,11 @@ func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *F
 		case reflect.String:
 			ff.ValueType = StringType
 			ff.ValueSetter = func(destStruct interface{}, value string) error {
-				rVal := reflect.ValueOf(destStruct).Elem()
+				rVal := reflect.ValueOf(destStruct)
+				for rVal.Kind() == reflect.Pointer {
+					rVal = rVal.Elem()
+				}
+
 				fld := rVal.Field(fIx)
 				if isNillable {
 					rvts := reflect.ValueOf(&value)
@@ -404,9 +519,83 @@ func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *F
 				}
 				return ""
 			}
-		case reflect.Int, reflect.Int32, reflect.Int64:
+		case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			ff.ValueType = IntType
+			iType := st.Kind()
+			ff.ValueSetter = func(destStruct interface{}, value string) error {
+				var (
+					intval uint64
+					e      error
+				)
+				if value != "" {
+					intval, e = strconv.ParseUint(value, 10, 64)
+					if e != nil {
+						return errors.New("not an uint")
+					}
+				} else {
+					// there is no value, we should just return
+					return nil
+					// intval = 0
+				}
+				rVal := reflect.ValueOf(destStruct).Elem()
+				fld := rVal.Field(fIx)
+				if isNillable {
+					var rvts reflect.Value
+					// we are going to need to get this to the right type otherwise it won't work.
+					switch iType {
+					case reflect.Uint:
+						v := uint(intval)
+						rvts = reflect.ValueOf(&v)
+					case reflect.Uint16:
+						v := uint16(intval)
+						rvts = reflect.ValueOf(&v)
+					case reflect.Uint32:
+						v := uint32(intval)
+						rvts = reflect.ValueOf(&v)
+					default:
+						rvts = reflect.ValueOf(&intval)
+					}
+					fld.Set(rvts)
+				} else {
+					fld.SetUint(intval)
+				}
 
+				return nil
+			}
+			ff.Validate = func(s string) string {
+				if strings.TrimSpace(s) == "" {
+					if ff.Rule.Required {
+						return "required"
+					} else {
+						return ""
+					}
+				}
+				intval, e := strconv.ParseUint(s, 10, 64)
+				if e != nil {
+					return "couldn't parse the given value as an unsigned integer"
+				}
+
+				if ff.Rule.Min != 0 && intval < uint64(ff.Rule.Min) {
+					return fmt.Sprintf("cannot be less than %d", uint64(ff.Rule.Min))
+				}
+				if ff.Rule.Max != 0 && intval > uint64(ff.Rule.Max) {
+					return fmt.Sprintf("cannot be greather than %d", uint64(ff.Rule.Max))
+				}
+
+				if ff.Rule.RegexString != "" {
+					m, err := regexp.Match(ff.Rule.RegexString, []byte(s))
+					if err != nil {
+						return err.Error()
+					}
+					if !m {
+						return fmt.Sprintf("does not match the regex pattern: %s", ff.Rule.RegexString)
+					}
+				}
+				return ""
+			}
+		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
+			ff.ValueType = IntType
+			iType := st.Kind()
 			ff.ValueSetter = func(destStruct interface{}, value string) error {
 				var (
 					intval int64
@@ -418,23 +607,46 @@ func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *F
 						return errors.New("not an int")
 					}
 				} else {
-					intval = 0
+					// there is no value, we should just return
+					return nil
 				}
 				rVal := reflect.ValueOf(destStruct).Elem()
 				fld := rVal.Field(fIx)
+				if isNillable {
+					var rvts reflect.Value
+					// we are going to need to get this to the right type otherwise it won't work.
+					switch iType {
+					case reflect.Int:
+						v := int(intval)
+						rvts = reflect.ValueOf(&v)
+					case reflect.Int16:
+						v := int16(intval)
+						rvts = reflect.ValueOf(&v)
+					case reflect.Int32:
+						v := int32(intval)
+						rvts = reflect.ValueOf(&v)
+					default:
+						rvts = reflect.ValueOf(&intval)
+					}
+					fld.Set(rvts)
+				} else {
+					fld.SetInt(intval)
+				}
 
-				fld.SetInt(intval)
 				return nil
 			}
 			ff.Validate = func(s string) string {
-				if ff.Rule.Required {
-					if strings.TrimSpace(s) == "" {
+
+				if strings.TrimSpace(s) == "" {
+					if ff.Rule.Required {
 						return "required"
+					} else {
+						return ""
 					}
 				}
 				intval, e := strconv.ParseInt(s, 10, 64)
 				if e != nil {
-					return "couldn't parse the given value as an int"
+					return "couldn't parse the given value as an integer"
 				}
 				if ff.Rule.Min != 0 && intval < int64(ff.Rule.Min) {
 					return fmt.Sprintf("cannot be less than %d", int64(ff.Rule.Min))
@@ -454,6 +666,22 @@ func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *F
 				}
 				return ""
 			}
+		case reflect.Struct:
+			if !isNillable {
+				return nil, errors.Errorf("invalid template structure: Field %s of type %s must be a pointer", ff.Path, st.Name())
+			}
+			structVal := reflect.New(st).Elem()
+			var subMappings map[string]interface{}
+			if v, ok := fmappings[info.Name]; ok {
+				if v, ok := v.(map[string]interface{}); ok {
+					subMappings = v
+				}
+			}
+			ss, err := reflectFormStructure(ff.Path, structVal, subMappings)
+			if err != nil {
+				return nil, err
+			}
+			ff.SubStructure = ss
 		default:
 			// the type isn't supported
 		}
@@ -462,7 +690,7 @@ func reflectFormStructure(sv reflect.Value, fmappings map[string]interface{}) *F
 
 	}
 
-	return newForm
+	return newForm, nil
 }
 
 type FormStructure struct {
@@ -470,17 +698,70 @@ type FormStructure struct {
 	Inputs []*FormField
 }
 
+func (fs *FormStructure) GetMap() FormFieldMap {
+	ffm := make(FormFieldMap)
+	for _, i := range fs.Inputs {
+		item := i
+		ffm[i.FieldName] = item
+	}
+	return ffm
+}
+
 type FormField struct {
 	// Label is the text that describes it
 	Label string
 	// FieldName is the means to look up the struct that populated it
 	FieldName    string
+	Path         string
 	ValueType    FieldValueType
 	DefaultValue interface{}
 	ValueSetter  ReflectedValueSetter
 	ValueGetter  func(interface{}) interface{}
 	Validate     func(string) string
 	Rule         FieldRule
+	SubStructure *FormStructure
+}
+
+type FormFieldMap map[string]*FormField
+
+func (ffm FormFieldMap) GetField(path string) (*FormField, error) {
+	parts := strings.SplitN(path, ".", 2)
+	ff, ok := ffm[parts[0]]
+	if !ok {
+		return nil, errors.Errorf("field %s was specified but not defined", parts[0])
+	}
+	if len(parts) == 2 {
+		// there are two parts, so we have a sub-stucture.
+		return ff.SubStructure.GetMap().GetField(parts[1])
+	} else {
+		return ff, nil
+	}
+}
+
+func (ffm FormFieldMap) SetFieldValue(path string, destStruct interface{}, value string) error {
+	parts := strings.SplitN(path, ".", 2)
+	ff, ok := ffm[parts[0]]
+	if !ok {
+		return errors.Errorf("field %s was specified but not defined", parts[0])
+	}
+	if ff.SubStructure == nil {
+		return ff.ValueSetter(destStruct, value)
+	} else {
+		// we have a sub structure. First we need to see if it needs to be initialized
+		rv := ff.ValueGetter(destStruct)
+		if rv == nil {
+			// it is not set, so we need to initialize it.
+			nv := reflect.New(reflect.ValueOf(ff.DefaultValue).Type())
+			destReflect := reflect.ValueOf(destStruct)
+			for destReflect.Kind() == reflect.Pointer {
+				destReflect = destReflect.Elem()
+			}
+			destReflect.FieldByName(ff.FieldName).Set(nv)
+			rv = nv.Interface()
+		}
+		return ff.SubStructure.GetMap().SetFieldValue(parts[1], rv, value)
+
+	}
 }
 
 type ReflectedValueSetter func(destStruct interface{}, value string) error

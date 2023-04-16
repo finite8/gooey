@@ -33,8 +33,20 @@ func NewInput() *inputPage {
 }
 
 type TestStruct struct {
-	Name     string `gooey:"min=2,max=10"`
-	Address  string
-	Religion *string
-	Age      int
+	Name       string `gooey:"min=2,max=10"`
+	Address    string
+	Religion   *string
+	PretendAge *int32
+	RealAge    int
+	Sub        *SubStruct
+}
+
+type SubStruct struct {
+	SubField     string
+	NestedNested *AnotherSub
+}
+
+type AnotherSub struct {
+	TestChildValue *string
+	SomeNumber     uint64
 }

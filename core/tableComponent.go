@@ -48,12 +48,19 @@ func ArrayToTable(arrayOfValues interface{}) *TableData {
 		currItem := rv.Index(ix)
 		var currRow []interface{}
 		for r_ix := 0; r_ix < rt.NumField(); r_ix++ {
-			val := currItem.Field(r_ix)
-			if val.Kind() == reflect.Ptr {
-				val = val.Elem()
+			var val interface{}
+			fv := currItem.Field(r_ix)
+			if fv.Kind() == reflect.Ptr {
+				if fv.IsNil() {
+					val = nil
+				} else {
+					val = fv.Elem().Interface()
+				}
+			} else {
+				val = fv.Interface()
 			}
 
-			rndr_val := MakeRenderablePrimitive(val.Interface()) // NewTextPrimitve(fmt.Sprintf("%v", val.Interface()))
+			rndr_val := MakeRenderablePrimitive(val) // NewTextPrimitve(fmt.Sprintf("%v", val.Interface()))
 			currRow = append(currRow, rndr_val)
 		}
 		table.Rows = append(table.Rows, currRow)
@@ -66,7 +73,7 @@ func (tc *TableComponent) OnRegister(ctx register.Registerer) {
 
 }
 
-func (tc *TableComponent) WriteContent(ctx register.PageContext, w PageWriter) {
+func (tc *TableComponent) Write(ctx register.PageContext, w PageWriter) {
 	data, err := tc.dataGetter(ctx)
 	if err != nil {
 		// we need to handle this somehow

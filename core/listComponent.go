@@ -48,7 +48,7 @@ func ArrayToRenderableArray(arrayOfValues interface{}) []Renderable {
 
 }
 
-func (lc *ListComponent) WriteContent(ctx register.PageContext, w PageWriter) {
+func (lc *ListComponent) Write(ctx register.PageContext, w PageWriter) {
 	data, err := lc.dataGetter(ctx)
 	if err != nil {
 		// we need to handle this somehow

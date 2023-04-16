@@ -50,25 +50,3 @@ type ContactDetails struct {
 	Subject string
 	Message string
 }
-
-// func (lp *listPackages) Name() string {
-// 	return "List Packages"
-// }
-// func (lp *listPackages) Handler(w http.ResponseWriter, r *http.Request) {
-// 	tmpl := template.Must(template.ParseFiles("forms.html"))
-// 	if r.Method != http.MethodPost {
-// 		tmpl.Execute(w, nil)
-// 		return
-// 	}
-
-// 	details := ContactDetails{
-// 		Email:   r.FormValue("email"),
-// 		Subject: r.FormValue("subject"),
-// 		Message: r.FormValue("message"),
-// 	}
-
-// 	// do something with details
-// 	_ = details
-
-// 	tmpl.Execute(w, struct{ Success bool }{true})
-// }
