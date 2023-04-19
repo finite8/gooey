@@ -39,15 +39,16 @@ var (
 )
 
 type webregister struct {
-	root         *registeredPageInfo
-	registered   map[string]*registeredPageInfo
-	queued       map[string]*registeredPageInfo
-	pageRegister map[Page]*registeredPageInfo
-	mux          sync.Mutex
-	layout       PageLayout
-	fileSystems  map[string]http.FileSystem
-	handler      func(w http.ResponseWriter, r *http.Request, page Page)
-	ctx          context.Context
+	root                *registeredPageInfo
+	registered          map[string]*registeredPageInfo
+	queued              map[string]*registeredPageInfo
+	pageRegister        map[Page]*registeredPageInfo
+	mux                 sync.Mutex
+	layout              PageLayout
+	fileSystems         map[string]http.FileSystem
+	handler             func(w http.ResponseWriter, r *http.Request, page Page)
+	ctx                 context.Context
+	globalPreprocessors []*pagePreprocessor
 }
 
 type GOOEYHandlerFunc func(w http.ResponseWriter, r *http.Request, page Page)
@@ -61,12 +62,31 @@ func (wr *webregister) RegisterPrivateSubPage(id string, page Page) {
 }
 
 type registeredPageInfo struct {
-	parentid interface{}
-	path     string
-	id       string
-	page     Page
-	children map[string]*registeredPageInfo
-	private  bool // if private, the register will not report this page as part of any kind of menu or lookup request
+	parentid       interface{}
+	resolvedParent *registeredPageInfo
+	path           string
+	id             string
+	page           Page
+	children       map[string]*registeredPageInfo
+	private        bool // if private, the register will not report this page as part of any kind of menu or lookup request
+	preprocessors  []*pagePreprocessor
+}
+
+type pagePreprocessor struct {
+	preprocessor func(Page, PageContext) PagePreprocessResult
+	// if true, this preprocessor will apply to child pages as well. Note: the preprocessor assigned to a page will be checked before parents are.
+	// if the child preprocessor halts preprocessing, the parent will not apply.
+	applyChildren bool
+}
+
+type PagePreprocessResult struct {
+	// If true, no other preprocessors will be evaluated
+	HaltPreprocessing bool
+	// If set, the returned will be used as the result. Actual outcome depends on the returned entity.
+	// - error / string: The default 500 renderer will be used to render the results
+	// - page: The page will be rendered instead.
+	// - any other type: Will be treated as an unexpected error. The result is not rendered.
+	Result interface{}
 }
 
 func precompileCheck() {
@@ -107,6 +127,7 @@ func Compile() error {
 
 			if foundParent != nil {
 				foundParent.children[v.id] = v
+				v.resolvedParent = foundParent
 				log.WithField("ParentId", foundParent.id).Info("Page hierachy established")
 			}
 			globalregister.registered[v.id] = v
@@ -174,9 +195,12 @@ func RegisterFileSystem(name string, fs http.FileSystem) error {
 	return nil
 }
 
+type PageOption interface {
+}
+
 // RegisterPage adds a renderable page into the system.
 // parent: either a resolvable ID or the actual page if available. If nil, it is put in a placeholder location for later referencing. parents may not exist yet at time of this being called
-func RegisterPage(parent interface{}, id string, page Page) error {
+func RegisterPage(parent interface{}, id string, page Page, opts ...PageOption) error {
 	globalregister.mux.Lock()
 	defer globalregister.mux.Unlock()
 	id = strings.TrimSpace(strings.ToLower(id))
@@ -255,7 +279,7 @@ func (psd *pageStructureData) Children() []PageStructure {
 	return nil
 }
 
-func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, page Page) {
+func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, p Page) {
 	if r.Method == http.MethodGet {
 		cook, err := r.Cookie("test")
 		if err != nil {
@@ -273,10 +297,49 @@ func (wr *webregister) globalHandler(w http.ResponseWriter, r *http.Request, pag
 
 	ctx := newPageContext(wr.ctx, r)
 	b := getNewBehaviour(wr.getNewMeta(ctx))
-	for _, o := range []interface{}{wr.layout, page} {
+	for _, o := range []interface{}{wr.layout, p} {
 		if bc, ok := o.(PageBehaviour); ok {
 			b = bc.QueryBehaviour(ctx, b)
 		}
+	}
+	var ppResult interface{}
+
+	// now we need to evaluate the preprocessors
+	// TODO
+	{
+		info := wr.FindPage(p)
+		isparent := false
+	PagePreprocessorEvaluate:
+		for info != nil {
+			for _, pp := range info.preprocessors {
+				if !isparent || pp.applyChildren {
+					r := pp.preprocessor(p, ctx)
+					if r.Result != nil {
+						ppResult = r.Result
+					}
+					if r.HaltPreprocessing {
+						break PagePreprocessorEvaluate
+					}
+				}
+			}
+			isparent = true
+			info = info.resolvedParent
+		}
+		for _, pp := range wr.globalPreprocessors {
+			r := pp.preprocessor(p, ctx)
+			if r.Result != nil {
+				ppResult = r.Result
+			}
+			if r.HaltPreprocessing {
+				break
+			}
+		}
+	}
+	var page Page
+	if ppResult == nil {
+		page = p
+	} else {
+		//TODO
 	}
 
 	if b.renderHTML {
