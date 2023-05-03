@@ -15,7 +15,7 @@ type Component interface {
 	Renderable
 	setRenderState(s renderstate)
 	OnRegister(ctx register.Registerer)
-	GetAttributes(ctx register.PageContext) string
+	//GetAttributeText(ctx register.PageContext) string
 }
 
 // A component that implements "HandlePost" will also be asked if it has accepted a POST event. If it has, then the normal page rendering will continue

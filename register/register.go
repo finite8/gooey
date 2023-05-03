@@ -17,11 +17,12 @@ import (
 // this will allow packages to register themselves with this component. Their UI's will be added into the stack
 func init() {
 	globalregister = &webregister{
-		registered:   map[string]*registeredPageInfo{},
-		queued:       map[string]*registeredPageInfo{},
-		pageRegister: map[Page]*registeredPageInfo{},
-		fileSystems:  map[string]http.FileSystem{},
-		ctx:          context.Background(),
+		registered:     map[string]*registeredPageInfo{},
+		queued:         map[string]*registeredPageInfo{},
+		pageRegister:   map[Page]*registeredPageInfo{},
+		fileSystems:    map[string]http.FileSystem{},
+		ctx:            context.Background(),
+		customHandlers: map[string]Page{},
 	}
 	logger = logrus.New()
 
@@ -30,6 +31,10 @@ func init() {
 const (
 	RootPageId   = "root"
 	SigninPageId = "signin"
+)
+
+const (
+	errorpage = "error"
 )
 
 var (
@@ -49,6 +54,13 @@ type webregister struct {
 	handler             func(w http.ResponseWriter, r *http.Request, page Page)
 	ctx                 context.Context
 	globalPreprocessors []*pagePreprocessor
+	customHandlers      map[string]Page
+	CorePages           CoreSystemPages
+}
+
+type CoreSystemPages struct {
+	// Error page handles
+	ErrorPage Page
 }
 
 type GOOEYHandlerFunc func(w http.ResponseWriter, r *http.Request, page Page)
@@ -172,6 +184,10 @@ func registerHandlersAtPath(parent Page, path string, pageInfo *registeredPageIn
 	for _, v := range pageInfo.children {
 		registerHandlersAtPath(parent, basePath, v)
 	}
+}
+
+func CorePages() *CoreSystemPages {
+	return &globalregister.CorePages
 }
 
 func SetLayout(l PageLayout) {

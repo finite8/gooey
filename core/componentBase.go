@@ -13,7 +13,7 @@ func (cb *ComponentBase) setRenderState(s renderstate) {
 	cb.currstate = s
 }
 
-func (cb *ComponentBase) GetAttributes(ctx register.PageContext) string {
+func (cb *ComponentBase) GetAttributeText(ctx register.PageContext) string {
 	m, _ := cb.AttibutingElement.GetAttributes(ctx)
 	if cb.Style != nil {
 		cb.Style.Apply(ctx, &m)

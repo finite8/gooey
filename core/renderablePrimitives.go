@@ -9,6 +9,17 @@ import (
 	"github.com/ntaylor-barnett/gooey/register"
 )
 
+type nilComponent struct {
+}
+
+func (nc *nilComponent) OnRegister(ctx register.Registerer) {
+	// this has nothing to do on register
+}
+
+func (nc *nilComponent) setRenderState(s renderstate) {
+
+}
+
 // MakeRenderable will return a Renderable instance of whatever is given to it.
 func MakeRenderablePrimitive(v interface{}) Renderable {
 	return makeRenderableInternal(v, RenderOption{}, 0)
@@ -186,6 +197,7 @@ func (rw *RenderWrapper) Write(ctx register.PageContext, pw PageWriter) {
 }
 
 type TextRenderer struct {
+	nilComponent
 	Value     string
 	Class     string
 	classText string
