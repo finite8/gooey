@@ -5,7 +5,7 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/ntaylor-barnett/gooey/register"
+	"github.com/finite8/gooey/register"
 )
 
 type ListComponent struct {

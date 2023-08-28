@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ntaylor-barnett/gooey/pkg/htmlwriter"
+	"github.com/finite8/gooey/pkg/htmlwriter"
 	logrus "github.com/sirupsen/logrus"
 )
 

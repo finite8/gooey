@@ -1,6 +1,6 @@
 package core
 
-import "github.com/ntaylor-barnett/gooey/register"
+import "github.com/finite8/gooey/register"
 
 // all components should share this
 type ComponentBase struct {

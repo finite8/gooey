@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ntaylor-barnett/gooey/register"
+	"github.com/finite8/gooey/register"
 )
 
 // the component is the most basic element that allows itself to be rendered.

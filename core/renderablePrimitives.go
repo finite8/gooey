@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ntaylor-barnett/gooey/register"
+	"github.com/finite8/gooey/register"
 )
 
 type nilComponent struct {

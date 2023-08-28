@@ -12,8 +12,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/finite8/gooey/register"
 	"github.com/google/uuid"
-	"github.com/ntaylor-barnett/gooey/register"
 )
 
 /*

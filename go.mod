@@ -1,4 +1,4 @@
-module github.com/ntaylor-barnett/gooey
+module github.com/finite8/gooey
 
 go 1.19
 

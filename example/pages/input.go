@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ntaylor-barnett/gooey/core"
-	"github.com/ntaylor-barnett/gooey/register"
+	"github.com/finite8/gooey/core"
+	"github.com/finite8/gooey/register"
 )
 
 var _ = register.RegisterPage(register.RootPageId, "inputPage", NewInput())

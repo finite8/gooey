@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/ntaylor-barnett/gooey/register"
+	"github.com/finite8/gooey/register"
 )
 
 // objectComponent is a basic representation of an object (something that has key-value pairs).

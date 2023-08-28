@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ntaylor-barnett/gooey/register"
+	"github.com/finite8/gooey/register"
 )
 
 // the component container is a simple page that can display components. Each component supports the ability to render itself in the space.

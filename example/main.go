@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	_ "github.com/ntaylor-barnett/gooey/example/pages"
-	_ "github.com/ntaylor-barnett/gooey/pkg/bootstrap"
-	"github.com/ntaylor-barnett/gooey/register"
+	_ "github.com/finite8/gooey/example/pages"
+	_ "github.com/finite8/gooey/pkg/bootstrap"
+	"github.com/finite8/gooey/register"
 	"github.com/pkg/browser"
 	"github.com/sirupsen/logrus"
 )

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/finite8/gooey/register"
 	"github.com/gorilla/websocket"
-	"github.com/ntaylor-barnett/gooey/register"
 	"github.com/sirupsen/logrus"
 )
 

@@ -5,8 +5,8 @@ import (
 
 	_ "embed"
 
-	"github.com/ntaylor-barnett/gooey/core"
-	"github.com/ntaylor-barnett/gooey/register"
+	"github.com/finite8/gooey/core"
+	"github.com/finite8/gooey/register"
 )
 
 //go:embed css/bootstrapbind.css

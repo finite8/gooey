@@ -3,7 +3,7 @@ package core
 import (
 	"sort"
 
-	"github.com/ntaylor-barnett/gooey/register"
+	"github.com/finite8/gooey/register"
 )
 
 func init() {

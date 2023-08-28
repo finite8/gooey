@@ -3,7 +3,7 @@ package core
 import (
 	"io"
 
-	"github.com/ntaylor-barnett/gooey/register"
+	"github.com/finite8/gooey/register"
 )
 
 // the LayoutComponent is simply a container that can contain other containers. It provides very simple layout capabilities.
