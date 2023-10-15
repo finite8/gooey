@@ -11,13 +11,15 @@ Ever had one of those moments where you are working on a Go service or something
 
 Well, you and I think alike, and this is where this project came along. I had a situation where I just wanted a really simple little developer-oriented UI to run a few commands and pull up some data in a nice and friendly way for my Golang services running in AWS. I would only access these services via something like KubeProxy because "hey, I'm a dev and I have access" but the tedium of CLIs and the many things that can go wrong is something you want to avoid. Maybe you want to capture some data that is too difficult to dump to a console log, or there is some internal info that figuring out how to visualize and present it on a graphana daskboard through prometheus is equally a pain. Either way, you need a quick and simple UI you can slap onto a service, or maybe you want to dedicated a pod to run this back-end UI. 
 
-# The Tenets of this project - Praise be to GOOEY
+# Alpha-only at this stage
+This project has (slowly) reached a point where I can start experimenting with some actual day-to-day tasks. To make it accessible I have now made the project public. Feel free to have a play with it and offer some suggestions. As I move it forward, it will most likely go through some big changes in both the way the framework is assembled and how it is used so please don't use it in any valuable production loads. Also, I am not a web security guy, so I am sure there are some problem around how I am doing some of the web bits. As I learn more, this will develop further so watch this space.
+
+# The Tenets of this project
 1. Simple and intuitive
 2. Suits different levels of lazy
 3. As close to pure Go as a UI can get
 4. Doesn't look terrible
 5. All-in-one
-6. Do (as little to) no evil (as possible)
 
 ## Tenet #1: Simple and intuitive
 People hate the old Microsoft "WebForms" for all the things it got wrong, but what it got really right was that it dealt with a lot of the messy web and ajax stuff so you didn't have to figure that stuff out. With this we try to get as much of that simplicity in there and let the framework do as much of the thinking as possible.
@@ -32,7 +34,7 @@ Just tell it what host and port your site can be seen at (example here) and defi
 ### A bit less lazy.
 A good pattern is to break up your pages into their own subfolders. Just use a "_" reference and put your own "func init()" in that code to self register and away you go. 
 ### I need a bit more control than that.
-The various structs are designed and ready for embedding into all sorts of places. You should see even by looking at the "Core" package that they often use eachothers functionality where they need it. OO for the win! You are however diving into some deeper territory, so you are going to need to documentation now.
+The various structs are designed and ready for embedding into all sorts of places. You should see even by looking at the "Core" package that they often use eachothers functionality where they need it. OO for the win! You are however diving into some deeper territory, so you are going to need documentation now.
 ### Comeon! I want MORE control.
 Fine. Use the interfaces. GOOEY ultimately does everything via its interfaces so add the functions needed to get the behaviour you want for your Components. However, if you haven't read the documentation yet, you are very much in that territory now. 
 ### Cowards. Give me MORE CONTROL!
@@ -47,6 +49,6 @@ GOOEY currently supports Bootstrap as its main "make me look good" thing. Using 
 You are also able to build your own layout system to customize where things get placed if you need to but hopefully, the "out of the box" look from this. If you do, you can just not bring in the bootstrap stuff and do it all yourself.
 
 ## Tenet 5: All-in-one
-One problem with all of the "proper" Web solutions is that you need to have a whole directory to serve up in order to get things working. 
+One problem with all of the "proper" Web solutions is that you need to have a whole directory to serve up in order to get things working. The goal of this project is to enable a system that allows for a UI to be built and accessed as easily as possible. 
 
 
