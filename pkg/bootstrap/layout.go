@@ -12,10 +12,10 @@ import (
 //go:embed css/bootstrapbind.css
 var bootstrapBindCSS []byte
 
-//go:embed src/dist/css/bootstrap.min.css
+//go:embed dist/bootstrap.min.css
 var bootstrapCSS []byte
 
-//go:embed src/dist/js/bootstrap.min.js
+//go:embed dist/bootstrap.min.js
 var bootstrapJS []byte
 
 func init() {
